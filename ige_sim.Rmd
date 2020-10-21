@@ -9,6 +9,7 @@ output: html
 Simulate parental genetic and and environmental effects for given heritability ($h^2$) and phenotypic variance $V_P$
 
 ```{r}
+set.seed(14) #lucky number
 h2 = 0.8
 V_P = 1
 V_Tagged = 0.45 #Yengo et al., 2018 states that several previous gwas have found snp heritability to be 45%
@@ -38,7 +39,7 @@ paternal_phenotype = paternal_genetic + paternal_environment
 Offspring genetic is the average of the parents plus segregation variance $V_\mathrm{seg} = \frac{1}{2}V_A$
 
 ```{r}
-
+set.seed(14)
 offspring_segregation = rnorm(n, 0, sd=sqrt(V_A/2))
 offspring_genetic = (maternal_genetic + paternal_genetic)/2 + offspring_segregation
 
@@ -71,6 +72,7 @@ coef(lm(offspring_phenotype ~ I((maternal_phenotype + paternal_phenotype)/2)))[[
 
 Create *noisy* PRS. PRS is the parental genetic effect plus a random deviation that is `prs_scale` times the genetic effects, then turn them back into standardized variables
 ```{r}
+set.seed(14) 
 prs_scale <- 10
 maternal_prs = scale(rnorm(n, mean=maternal_genetic_forPRS, sd=sqrt(prs_scale*V_Tagged)))[,1]
 paternal_prs = scale(rnorm(n, mean=paternal_genetic_forPRS, sd=sqrt(prs_scale*V_Tagged)))[,1]
