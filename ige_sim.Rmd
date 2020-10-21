@@ -11,18 +11,27 @@ Simulate parental genetic and and environmental effects for given heritability (
 ```{r}
 h2 = 0.8
 V_P = 1
-V_A = h2*V_P
+V_Tagged = 0.45 #Yengo et al., 2018 states that several previous gwas have found snp heritability to be 45%
+V_nTagged = h2 - V_Tagged
+V_A = V_Tagged + V_nTagged
 V_E = (1-h2)*V_P
 n = 10000
 
 maternal_genetic = rnorm(n, mean=0, sd = sqrt(V_A))
 paternal_genetic = rnorm(n, mean=0, sd = sqrt(V_A))
 
+maternal_genetic_forPRS = rnorm(n, mean=0, sqrt(V_Tagged))
+paternal_genetic_forPRS = rnorm(n, mean=0, sqrt(V_Tagged))
+
 maternal_environment = rnorm(n, mean=0, sd = sqrt(V_E))
 paternal_environment = rnorm(n, mean=0, sd = sqrt(V_E))
 
 maternal_phenotype = maternal_genetic + maternal_environment
 paternal_phenotype = paternal_genetic + paternal_environment
+
+
+
+
 
 ```
 
@@ -63,14 +72,14 @@ coef(lm(offspring_phenotype ~ I((maternal_phenotype + paternal_phenotype)/2)))[[
 Create *noisy* PRS. PRS is the parental genetic effect plus a random deviation that is `prs_scale` times the genetic effects, then turn them back into standardized variables
 ```{r}
 prs_scale <- 10
-maternal_prs = scale(rnorm(n, mean=maternal_genetic, sd=sqrt(prs_scale*V_A)))[,1]
-paternal_prs = scale(rnorm(n, mean=paternal_genetic, sd=sqrt(prs_scale*V_A)))[,1]
+maternal_prs = scale(rnorm(n, mean=maternal_genetic_forPRS, sd=sqrt(prs_scale*V_Tagged)))[,1]
+paternal_prs = scale(rnorm(n, mean=paternal_genetic_forPRS, sd=sqrt(prs_scale*V_Tagged)))[,1]
 ```
 
 
 Offspring PRS is the average of their parents' PRSs plus a noisy deviation based on the offspring's own segregation deviation
 ```{r}
-offspring_prs = scale((maternal_prs + paternal_prs)/2 + rnorm(n, mean=offspring_segregation, sd=sqrt(prs_scale*V_A))/4)[,1]
+offspring_prs = scale((maternal_prs + paternal_prs)/2 + rnorm(n, mean=offspring_segregation, sd=sqrt(prs_scale*V_Tagged))/4)[,1]
 ```
   
 
