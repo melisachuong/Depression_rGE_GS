@@ -12,9 +12,9 @@ Simulate parental genetic and and environmental effects for given heritability (
 set.seed(14) #lucky number
 h2 = 0.8
 V_P = 1
+V_A = h2*V_P
 V_Tagged = 0.45 #Yengo et al., 2018 states that several previous gwas have found snp heritability to be 45%
 V_nTagged = V_A - V_Tagged
-V_A = h2*V_P
 V_E = (1-h2)*V_P
 n = 10000
 
