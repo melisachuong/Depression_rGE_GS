@@ -18,9 +18,6 @@ V_nTagged = V_A - V_Tagged
 V_E = (1-h2)*V_P
 n = 10000
 
-#Creating a genetic variable that accounts for all genetic variance
-maternal_genetic = rnorm(n, mean=0, sd = sqrt(V_A))
-paternal_genetic = rnorm(n, mean=0, sd = sqrt(V_A))
 
 #Creating a genetic variable that captures ALL tagged genetic variance
 maternal_genetic_tagged = rnorm(n, mean=0, sqrt(V_Tagged))
@@ -30,6 +27,9 @@ paternal_genetic_tagged = rnorm(n, mean=0, sqrt(V_Tagged))
 maternal_genetic_ntagged = rnorm(n, mean=0, sqrt(V_nTagged))
 paternal_genetic_ntagged = rnorm(n, mean=0, sqrt(V_nTagged))
 
+#Creating a genetic variable that accounts for all genetic variance
+maternal_genetic = maternal_genetic_tagged + maternal_genetic_ntagged
+paternal_genetic = paternal_genetic_tagged + paternal_genetic_ntagged
 
 maternal_environment = rnorm(n, mean=0, sd = sqrt(V_E))
 paternal_environment = rnorm(n, mean=0, sd = sqrt(V_E))
@@ -45,9 +45,14 @@ Offspring genetic is the average of the parents plus segregation variance $V_\ma
 ```{r}
 
 offspring_segregation = rnorm(n, 0, sd=sqrt(V_A/2))
-offspring_segregation_tagged = rnorm(n, 0, sd=sqrt(V_Tagged/2))
 
-offspring_genetic = (maternal_genetic + paternal_genetic)/2 + offspring_segregation
+offspring_segregation_tagged = rnorm(n, 0, sd=sqrt(V_Tagged/2))
+offspring_segregation_ntagged = rnorm(n, 0, sd=sqrt(V_nTagged/2))
+
+offspring_genetic_tagged = (maternal_genetic_tagged + paternal_genetic_tagged)/2 + offspring_segregation_tagged
+offspring_genetic_ntagged = (maternal_genetic_ntagged + paternal_genetic_ntagged)/2 + offspring_segregation_ntagged
+
+offspring_genetic = offspring_genetic_tagged + offspring_genetic_ntagged
 
 offspring_environment = rnorm(n, mean=0, sd = sqrt(V_E))
 
@@ -79,15 +84,18 @@ coef(lm(offspring_phenotype ~ I((maternal_phenotype + paternal_phenotype)/2)))[[
 Create *noisy* PRS. PRS is the parental genetic effect plus a random deviation that is `prs_scale` times the genetic effects, then turn them back into standardized variables
 ```{r}
  
-prs_scale <- 10
-maternal_prs = scale(rnorm(n, mean=maternal_genetic_tagged, sd=sqrt(prs_scale*V_Tagged)))[,1]
-paternal_prs = scale(rnorm(n, mean=paternal_genetic_tagged, sd=sqrt(prs_scale*V_Tagged)))[,1]
+#prs_scale <- 0
+#maternal_prs = scale(rnorm(n, mean=maternal_genetic_tagged, sd=sqrt(prs_scale*V_Tagged)))[,1]]
+maternal_prs = maternal_genetic_tagged
+#paternal_prs = scale(rnorm(n, mean=paternal_genetic_tagged, sd=sqrt(prs_scale*V_Tagged)))[,1]
+paternal_prs = paternal_genetic_tagged
 ```
 
 
 Offspring PRS is the average of their parents' PRSs plus a noisy deviation based on the offspring's own segregation deviation
 ```{r}
-offspring_prs = scale((maternal_prs + paternal_prs)/2 + rnorm(n, mean=offspring_segregation_tagged, sd=sqrt(prs_scale*V_Tagged))/4)[,1]
+#offspring_prs = scale((maternal_prs + paternal_prs)/2 + rnorm(n, mean=offspring_segregation_tagged, sd=sqrt(prs_scale*V_Tagged))/4)[,1]
+offspring_prs = offspring_genetic_tagged
 ```
   
 
@@ -113,16 +121,62 @@ write.table(cohort, "cohort", row.names=F, quote=F)
 
 Regress offspring phenotypes on genetic values
 ```{r}
-summary(lm(offspring_phenotype ~ offspring_genetic + maternal_genetic + paternal_genetic, data=cohort))
+#summary(lm(offspring_phenotype ~ offspring_genetic + maternal_genetic + paternal_genetic, data=cohort))
 ```
 
 Regress offspring phenotypes on PRS values
 ```{r}
 summary(lm(offspring_phenotype ~ offspring_prs, data=cohort))
-summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs, data=cohort))
-summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs + maternal_phenotype + paternal_phenotype, data=cohort))
+#summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs, data=cohort))
+#summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs + maternal_phenotype + paternal_phenotype, data=cohort))
 
 ```
+
+
+
+
+```{r}
+#df <- matrix(data=NA, nrow=10, ncol=5)
+df[,1] <- c(1:10)
+colnames(df) <- c("PRS_Scale", "Estimate", "Std.Err", "P-Value", "Adj.R2")
+
+model <- summary(lm(offspring_phenotype ~ offspring_prs, data=cohort))
+df[10,2] <- model$coefficients[2,1]
+df[10,3] <- model$coefficients[2,2]
+df[10,4] <- model$coefficients[2,4]
+df[10,5] <- model$adj.r.squared
+
+
+
+
+model <- lm(Adj.R2 ~ PRS_Scale + I(PRS_Scale^2) + I(PRS_Scale^3), data=df)
+pred <- predict(model,data = df)
+plot(df$PRS_Scale, df$Adj.R2)
+lines(df$PRS_Scale, pred, lwd = 3, col = "pink")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Pathway models using PRSs  
 
