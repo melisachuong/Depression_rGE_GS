@@ -83,19 +83,22 @@ coef(lm(offspring_phenotype ~ I((maternal_phenotype + paternal_phenotype)/2)))[[
 
 Create *noisy* PRS. PRS is the parental genetic effect plus a random deviation that is `prs_scale` times the genetic effects, then turn them back into standardized variables
 ```{r}
- 
-#prs_scale <- 0
-#maternal_prs = scale(rnorm(n, mean=maternal_genetic_tagged, sd=sqrt(prs_scale*V_Tagged)))[,1]]
-maternal_prs = maternal_genetic_tagged
-#paternal_prs = scale(rnorm(n, mean=paternal_genetic_tagged, sd=sqrt(prs_scale*V_Tagged)))[,1]
-paternal_prs = paternal_genetic_tagged
+
+V_noise = 0.5 #this should be between 0 and VP
+
+maternal_noise = rnorm(n, 0, sd=(V_noise))
+maternal_prs = maternal_genetic_tagged + maternal_noise
+
+paternal_noise = rnorm(n, 0, sd=(V_noise)) #this is the same as maternal noise - would we be able to just make this parental_noise and limit this to one new variable?
+paternal_prs = paternal_genetic_tagged + paternal_noise 
+
 ```
 
 
 Offspring PRS is the average of their parents' PRSs plus a noisy deviation based on the offspring's own segregation deviation
 ```{r}
-#offspring_prs = scale((maternal_prs + paternal_prs)/2 + rnorm(n, mean=offspring_segregation_tagged, sd=sqrt(prs_scale*V_Tagged))/4)[,1]
-offspring_prs = offspring_genetic_tagged
+offspring_prs = offspring_genetic_tagged + offspring_segregation_tagged + (maternal_noise + paternal_noise)/2 + rnorm(n, 0, sd=(V_noise/2))
+
 ```
   
 
@@ -121,14 +124,14 @@ write.table(cohort, "cohort", row.names=F, quote=F)
 
 Regress offspring phenotypes on genetic values
 ```{r}
-#summary(lm(offspring_phenotype ~ offspring_genetic + maternal_genetic + paternal_genetic, data=cohort))
+summary(lm(offspring_phenotype ~ offspring_genetic + maternal_genetic + paternal_genetic, data=cohort))
 ```
 
 Regress offspring phenotypes on PRS values
 ```{r}
 summary(lm(offspring_phenotype ~ offspring_prs, data=cohort))
-#summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs, data=cohort))
-#summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs + maternal_phenotype + paternal_phenotype, data=cohort))
+summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs, data=cohort))
+summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs + maternal_phenotype + paternal_phenotype, data=cohort))
 
 ```
 
@@ -137,8 +140,8 @@ summary(lm(offspring_phenotype ~ offspring_prs, data=cohort))
 
 ```{r}
 #df <- matrix(data=NA, nrow=10, ncol=5)
-df[,1] <- c(1:10)
-colnames(df) <- c("PRS_Scale", "Estimate", "Std.Err", "P-Value", "Adj.R2")
+df[,1] <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1)
+colnames(df) <- c("V_noise", "Estimate", "Std.Err", "P-Value", "Adj.R2")
 
 model <- summary(lm(offspring_phenotype ~ offspring_prs, data=cohort))
 df[10,2] <- model$coefficients[2,1]
@@ -146,36 +149,12 @@ df[10,3] <- model$coefficients[2,2]
 df[10,4] <- model$coefficients[2,4]
 df[10,5] <- model$adj.r.squared
 
-
-
-
-model <- lm(Adj.R2 ~ PRS_Scale + I(PRS_Scale^2) + I(PRS_Scale^3), data=df)
+model <- lm(Adj.R2 ~ V_noise + I(V_noise^2) + I(V_noise^3), data=df)
 pred <- predict(model,data = df)
-plot(df$PRS_Scale, df$Adj.R2)
-lines(df$PRS_Scale, pred, lwd = 3, col = "pink")
+plot(df$V_noise, df$Adj.R2)
+lines(df$V_noise, pred, lwd = 3, col = "pink")
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 Pathway models using PRSs  
