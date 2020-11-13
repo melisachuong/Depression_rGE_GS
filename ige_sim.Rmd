@@ -1,507 +1,127 @@
----
-title: "Simulate genetic effects and PRS"
-output: html 
----
-
-
-# Genetic and environmental effects
-
-Simulate parental genetic and and environmental effects for given heritability ($h^2$) and phenotypic variance $V_P$
 
 ```{r}
-set.seed(14) #lucky number
-h2 = 0.8
+sym_1= c()
+sym_2= c()
+sym_3= c()
+sym_4= c()
+sym_5= c()
+sym_6= c()
+sym_7= c()
+
+for(j in seq(0,1, by=0.1)){ #j being V_noise; the PRS noise
+  for(k in seq(0.1,1, by=0.2)){ #k being heritability
+    for(i in 1:20){ #i being the iteration/no. of replications
+      for(l in seq(0,1, by=0.20)){ #l being the tagged genetic variance
+    iteration <- i
+    
+h2 = k
 V_P = 1
 V_A = h2*V_P
-V_Tagged = 0.45 #Yengo et al., 2018 states that several previous gwas have found snp heritability to be 45%
+V_Tagged = l*V_A 
 V_nTagged = V_A - V_Tagged
 V_E = (1-h2)*V_P
 n = 10000
 
-
 #Creating a genetic variable that captures ALL tagged genetic variance
 maternal_genetic_tagged = rnorm(n, mean=0, sqrt(V_Tagged))
 paternal_genetic_tagged = rnorm(n, mean=0, sqrt(V_Tagged))
-
+    
+    
 #Creating a genetic variable that captures ALL non-tagged genetic variance
 maternal_genetic_ntagged = rnorm(n, mean=0, sqrt(V_nTagged))
 paternal_genetic_ntagged = rnorm(n, mean=0, sqrt(V_nTagged))
-
-#Creating a genetic variable that accounts for all genetic variance
+    
+    
+#Creating a variable that accounts for all genetic variance
 maternal_genetic = maternal_genetic_tagged + maternal_genetic_ntagged
 paternal_genetic = paternal_genetic_tagged + paternal_genetic_ntagged
-
+    
+#Creating a genetic variable that accounts for all environmental variance
 maternal_environment = rnorm(n, mean=0, sd = sqrt(V_E))
 paternal_environment = rnorm(n, mean=0, sd = sqrt(V_E))
-
+    
+#Creating a variable that accounts for all environmental variance
 maternal_phenotype = maternal_genetic + maternal_environment
 paternal_phenotype = paternal_genetic + paternal_environment
-
-
-```
-
-Offspring genetic is the average of the parents plus segregation variance $V_\mathrm{seg} = \frac{1}{2}V_A$
-
-```{r}
-
+    
+    
+#Simulating offspring segregation
 offspring_segregation = rnorm(n, 0, sd=sqrt(V_A/2))
-
+    
+    
+#Simulating offspring segregation for tagged and non-tagged genetic variance
 offspring_segregation_tagged = rnorm(n, 0, sd=sqrt(V_Tagged/2))
 offspring_segregation_ntagged = rnorm(n, 0, sd=sqrt(V_nTagged/2))
-
+    
+    
+#Creating offspring genetic, environment and phenotypic variables
 offspring_genetic_tagged = (maternal_genetic_tagged + paternal_genetic_tagged)/2 + offspring_segregation_tagged
 offspring_genetic_ntagged = (maternal_genetic_ntagged + paternal_genetic_ntagged)/2 + offspring_segregation_ntagged
-
+    
 offspring_genetic = offspring_genetic_tagged + offspring_genetic_ntagged
-
+    
 offspring_environment = rnorm(n, mean=0, sd = sqrt(V_E))
-
+    
 offspring_phenotype = offspring_genetic + offspring_environment
-
-
-```
-
-Check offspring on parent regression
-
-```{r}
-
-2*coef(lm(offspring_phenotype ~ maternal_phenotype))[[2]]
-
-```
-
-```{r}
-
-2*coef(lm(offspring_phenotype ~ paternal_phenotype))[[2]]
-
-```
-
-```{r}
-coef(lm(offspring_phenotype ~ I((maternal_phenotype + paternal_phenotype)/2)))[[2]]
-```
-
-# PRS
-
-Create *noisy* PRS. PRS is the parental genetic effect plus a random deviation that is `prs_scale` times the genetic effects, then turn them back into standardized variables
-```{r}
-
-V_noise = 0.5 #this should be between 0 and VP
-
-maternal_noise = rnorm(n, 0, sd=(V_noise))
+    
+    
+#Specifying a noise variance variable that is between 0-V_P
+V_noise = j
+    
+    
+#Simulating parental PRSs where PRSs are derived of parental tagged genetic variables + noise derived using the noise variance variable created in the previous step
+maternal_noise = rnorm(n, 0, sd=sqrt(V_noise))
 maternal_prs = maternal_genetic_tagged + maternal_noise
-
-paternal_noise = rnorm(n, 0, sd=(V_noise)) #this is the same as maternal noise - would we be able to just make this parental_noise and limit this to one new variable?
+    
+paternal_noise = rnorm(n, 0, sd=sqrt(V_noise)) 
 paternal_prs = paternal_genetic_tagged + paternal_noise 
-
-```
-
-
-Offspring PRS is the average of their parents' PRSs plus a noisy deviation based on the offspring's own segregation deviation
-```{r}
-offspring_prs = offspring_genetic_tagged + offspring_segregation_tagged + (maternal_noise + paternal_noise)/2 + rnorm(n, 0, sd=(V_noise/2))
-
-```
-  
-
-Check that expected parent-offspring PRS correlation is about 0.5
-
-```{r}
-cor(maternal_prs, offspring_prs)
-cor(paternal_prs, offspring_prs)
-```
-
-# Simulated data
-
-Put all values into a data frame.
-```{r}
-
+    
+    
+#Simulating offspring PRSs derived from offspring tagged genetic variable + noise derived from the average parental noise and offspring noise
+offspring_prs = offspring_genetic_tagged + rnorm(n, 0, sd=sqrt(V_noise/2)) + (maternal_noise + paternal_noise)/2
+    
+    
+#Creating a data.frame with all important variables included
 cohort <- data.frame(maternal_genetic, maternal_environment, maternal_phenotype, maternal_prs,
-                 paternal_genetic, paternal_environment, paternal_phenotype, paternal_prs,
-                 offspring_genetic, offspring_environment, offspring_phenotype, offspring_prs)
-write.table(cohort, "cohort", row.names=F, quote=F)
-```
-
-# Regression models
-
-Regress offspring phenotypes on genetic values
-```{r}
-summary(lm(offspring_phenotype ~ offspring_genetic + maternal_genetic + paternal_genetic, data=cohort))
-```
-
-Regress offspring phenotypes on PRS values
-```{r}
-summary(lm(offspring_phenotype ~ offspring_prs, data=cohort))
-summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs, data=cohort))
-summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs + maternal_phenotype + paternal_phenotype, data=cohort))
-
-```
-
-
-
-
-```{r}
-#df <- matrix(data=NA, nrow=10, ncol=5)
-df[,1] <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1)
-colnames(df) <- c("V_noise", "Estimate", "Std.Err", "P-Value", "Adj.R2")
-
-model <- summary(lm(offspring_phenotype ~ offspring_prs, data=cohort))
-df[10,2] <- model$coefficients[2,1]
-df[10,3] <- model$coefficients[2,2]
-df[10,4] <- model$coefficients[2,4]
-df[10,5] <- model$adj.r.squared
-
-model <- lm(Adj.R2 ~ V_noise + I(V_noise^2) + I(V_noise^3), data=df)
-pred <- predict(model,data = df)
-plot(df$V_noise, df$Adj.R2)
-lines(df$V_noise, pred, lwd = 3, col = "pink")
-
-```
-
-
-Pathway models using PRSs  
-
-Simple model 
-```{r}
-
-library(lavaan)
-
-data <- read.table("cohort", header=T)
-data <- data[complete.cases(data),]
-
-sink("hei_pa_sim_m1_prs.txt")
-
-# Define model
-
-model <- ' 
-
-#direct effects
-
-offspring_phenotype ~ c*maternal_prs
-offspring_phenotype ~ f*paternal_prs            
-
-#mediator
-
-offspring_prs ~ 0.5*maternal_prs
-offspring_prs ~ 0.5*paternal_prs
-
-offspring_phenotype ~ b*offspring_prs
-
-# indirect effects (a*b, d*b)
-
-ab := 0.5*b
-db := 0.5*b
-
-# total effects 
-
-total_mum := c + (0.5*b)
-total_dad := f + (0.5*b)
-
-# covariance
-
-maternal_prs ~~ paternal_prs
-'
-
-# Fit the model
-fitM <- sem(model, data=data, estimator='ML')
-print(summary(fitM, standardized=TRUE, fit.measures=TRUE))
-print(AIC(fitM))
-sink()
-
-```
-
-Extended model
-```{r}
-
-rm(list=ls())
-
-library(lavaan)
-
-data <- read.table("cohort", header=T)
-data <- data[complete.cases(data),]
-
-sink("hei_pa_sim_m2_prs.txt") #adjusted extended model#
-
-# Define model
-
-model <- '
-
-#direct effects
-
-offspring_phenotype ~ c*maternal_prs
-offspring_phenotype ~ f*paternal_prs        
-
-#mediator
-
-offspring_prs ~ 0.5*maternal_prs
-offspring_prs ~ 0.5*paternal_prs
-
-offspring_phenotype ~ b*offspring_prs
-
-paternal_phenotype ~ g*paternal_prs
-maternal_phenotype ~ h*maternal_prs
-
-offspring_phenotype ~ i*paternal_phenotype
-offspring_phenotype ~ j*maternal_phenotype
-
-# indirect effects (a*b, d*b)
-
-ab := 0.5*b
-db := 0.5*b
-gi := g*i
-hj := h*j
-
-
-# total effects 
-
-total_mum := c + (0.5*b) + (h*j) 
-total_dad := f + (0.5*b) + (g*i) 
-
-# covariance
-
-maternal_prs ~~ paternal_prs
-maternal_phenotype ~~ paternal_phenotype
-
-'
-
-# Fit the model
-fitM <- sem(model, data=data, estimator='ML')
-print(summary(fitM, standardized=TRUE, fit.measures=TRUE))
-print(AIC(fitM))
-sink()
-
-```
-
-Extended Restricted Model
-```{r}
-#############################
-#EXTENDED (RESTRICTED) MODEL#
-#############################
-
-rm(list=ls())
-
-library(lavaan)
-
-data <- read.table("cohort", header=T)
-data <- data[complete.cases(data),]
-
-sink("hei_pa_sim_m3_prs.txt") #adjusted extended model#
-
-# Define model
-
-model <- ' 
-
-#direct effects
-
-#mediator
-
-offspring_prs ~ 0.5*maternal_prs
-offspring_prs ~ 0.5*paternal_prs
-
-offspring_phenotype ~ b*offspring_prs
-
-paternal_phenotype ~ g*paternal_prs
-maternal_phenotype ~ h*maternal_prs
-
-offspring_phenotype ~ i*paternal_phenotype
-offspring_phenotype ~ j*maternal_phenotype
-
-# indirect effects (a*b, d*b)
-
-ab := 0.5*b
-db := 0.5*b
-gi := g*i
-hj := h*j
-
-
-# total effects 
-
-total_mum := (0.5*b) + (h*j) ###### THIS IS WHAT I HAVE ADDED - NOT SURE IF ITS RIGHT THO #####
-total_dad := (0.5*b) + (g*i) ###### THIS IS WHAT I HAVE ADDED - NOT SURE IF ITS RIGHT THO #####
-
-# covariance
-
-maternal_prs ~~ paternal_prs
-maternal_phenotype ~~ paternal_phenotype
-'
-
-# Fit the model
-fitM <- sem(model, data=data, estimator='ML')
-print(summary(fitM, standardized=TRUE), fit.measures=TRUE)
-print(AIC(fitM))
-sink()
-
-```
-
-
-Pathway models using genetic variable  
-
-Simple Model
-```{r}
-
-library(lavaan)
-
-data <- read.table("cohort", header=T)
-data <- data[complete.cases(data),]
-
-sink("hei_pa_sim_m1_genetic.txt")
-
-# Define model
-
-model <- ' 
-
-#direct effects
-
-offspring_phenotype ~ c*maternal_genetic
-offspring_phenotype ~ f*paternal_genetic            
-
-#mediator
-
-offspring_genetic ~ 0.5*maternal_genetic
-offspring_genetic ~ 0.5*paternal_genetic
-
-offspring_phenotype ~ b*offspring_genetic
-
-# indirect effects (a*b, d*b)
-
-ab := 0.5*b
-db := 0.5*b
-
-# total effects 
-total_mum := c + (0.5*b)
-total_dad := f + (0.5*b)
-
-# covariance
-
-maternal_genetic ~~ paternal_genetic
-'
-
-# Fit the model
-fitM <- sem(model, data=data, estimator='ML')
-print(summary(fitM, standardized=TRUE, fit.measures=TRUE))
-print(AIC(fitM))
-sink()
-```
-
-Extended Model
-```{r}
-
-rm(list=ls())
-
-library(lavaan)
-
-data <- read.table("cohort", header=T)
-data <- data[complete.cases(data),]
-
-sink("hei_pa_sim_m2_genetic.txt") #adjusted extended model#
-
-# Define model
-
-model <- '
-
-#direct effects
-
-offspring_phenotype ~ c*maternal_genetic
-offspring_phenotype ~ f*paternal_genetic        
-
-#mediator
-
-offspring_genetic~ 0.5*maternal_genetic
-offspring_genetic ~ 0.5*paternal_genetic
-
-offspring_phenotype ~ b*offspring_genetic
-
-paternal_phenotype ~ g*paternal_genetic
-maternal_phenotype ~ h*maternal_genetic
-
-offspring_phenotype ~ i*paternal_phenotype
-offspring_phenotype ~ j*maternal_phenotype
-
-# indirect effects (a*b, d*b)
-
-ab := 0.5*b
-db := 0.5*b
-gi := g*i
-hj := h*j
-
-
-# total effects 
-
-total_mum := c + (0.5*b) + (h*j) ###### THIS IS WHAT I HAVE ADDED - NOT SURE IF ITS RIGHT THO #####
-total_dad := f + (0.5*b) + (g*i) ###### THIS IS WHAT I HAVE ADDED - NOT SURE IF ITS RIGHT THO #####
-
-# covariance
-
-maternal_genetic ~~ paternal_genetic
-maternal_phenotype ~~ paternal_phenotype
-
-'
-
-# Fit the model
-fitM <- sem(model, data=data, estimator='ML')
-print(summary(fitM, standardized=TRUE, fit.measures=TRUE))
-print(AIC(fitM))
-sink()
-```
-
-Extended (Restricted) Model
-```{r}
-
-rm(list=ls())
-
-library(lavaan)
-
-data <- read.table("cohort", header=T)
-data <- data[complete.cases(data),]
-
-sink("hei_pa_sim_m3_genetic.txt") #adjusted extended model#
-
-# Define model
-
-model <- ' 
-
-#direct effects
-
-#mediator
-offspring_genetic ~ 0.5*maternal_genetic
-offspring_genetic ~ 0.5*paternal_genetic
-
-offspring_phenotype ~ b*offspring_genetic
-
-paternal_phenotype ~ g*paternal_genetic
-maternal_phenotype ~ h*maternal_genetic
-
-offspring_phenotype ~ i*paternal_phenotype
-offspring_phenotype ~ j*maternal_phenotype
-
-# indirect effects (a*b, d*b)
-ab := 0.5*b
-db := 0.5*b
-gi := g*i
-hj := h*j
-
-
-# total effects 
-
-total_mum := (0.5*b) + (h*j) ###### THIS IS WHAT I HAVE ADDED - NOT SURE IF ITS RIGHT THO #####
-total_dad := (0.5*b) + (g*i) ###### THIS IS WHAT I HAVE ADDED - NOT SURE IF ITS RIGHT THO #####
-
-# covariance
-
-maternal_genetic ~~ paternal_genetic
-maternal_phenotype ~~ paternal_phenotype
-'
-
-# Fit the model
-fitM <- sem(model, data=data, estimator='ML')
-print(summary(fitM, standardized=TRUE), fit.measures=TRUE)
-print(AIC(fitM))
-sink()
-
-```
-
-
-
-
-
-
-
-
+paternal_genetic, paternal_environment, paternal_phenotype, paternal_prs,
+offspring_genetic, offspring_environment, offspring_phenotype, offspring_prs)
+    
+    
+ #Running separate regression models
+regression <- summary(lm(offspring_phenotype ~ offspring_prs, data=cohort))
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+sym_1 <- rbind(sym_1,reginfo)
+write.table(sym_1, "sim_outcome_offprs", row.names=T, quote=F)
+    
+regression <- summary(lm(offspring_phenotype ~ maternal_prs, data=cohort))
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+sym_2 <- rbind(sym_2,reginfo)
+write.table(sym_2, "sim_outcome_matprs", row.names=T, quote=F)
+    
+regression <- summary(lm(offspring_phenotype ~ paternal_prs, data=cohort))
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+sym_3 <- rbind(sym_3,reginfo)
+write.table(sym_3, "sim_outcome_patprs", row.names=T, quote=F)
+    
+regression <- summary(lm(offspring_phenotype ~ maternal_phenotype, data=cohort))
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+sym_4 <- rbind(sym_4,reginfo)
+write.table(sym_4, "sim_outcome_matpheno", row.names=T, quote=F)
+    
+regression <- summary(lm(offspring_phenotype ~ paternal_phenotype, data=cohort))
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+sym_5 <- rbind(sym_5,reginfo)
+write.table(sym_5, "sim_outcome_patpheno", row.names=T, quote=F)
+    
+regression <- summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs, data=cohort))
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+sym_6 <- rbind(sym_6,reginfo)
+write.table(sym_6, "sim_outcome_trioprs", row.names=T, quote=F)
+    
+regression <- summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs + maternal_phenotype + paternal_phenotype , data=cohort))
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+sym_7 <- rbind(sym_7,reginfo)
+write.table(sym_7, "sim_outcome_trioprs_parentpheno", row.names=T, quote=F)}}}}
+    
+```    
+    
