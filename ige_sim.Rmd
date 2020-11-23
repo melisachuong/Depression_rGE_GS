@@ -9,9 +9,9 @@ sym_6= c()
 sym_7= c()
 
 for(j in seq(0,1, by=0.1)){ #j being V_noise; the PRS noise
-  for(k in seq(0.1,1, by=0.2)){ #k being heritability
+  for(k in seq(0.1,1, by=0.1)){ #k being heritability
     for(i in 1:20){ #i being the iteration/no. of replications
-      for(l in seq(0,1, by=0.20)){ #l being the tagged genetic variance
+      for(l in seq(0.1,1, by=0.1)){ #l being the tagged genetic variance
     iteration <- i
     
 h2 = k
@@ -87,7 +87,7 @@ paternal_genetic, paternal_environment, paternal_phenotype, paternal_prs,
 offspring_genetic, offspring_environment, offspring_phenotype, offspring_prs)
     
     
- #Running separate regression models
+#Running separate regression models
 regression <- summary(lm(offspring_phenotype ~ offspring_prs, data=cohort))
 reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
 sym_1 <- rbind(sym_1,reginfo)
