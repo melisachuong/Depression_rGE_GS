@@ -8,16 +8,16 @@ sym_5= c()
 sym_6= c()
 sym_7= c()
 
-for(j in seq(0,1, by=0.1)){ #j being V_noise; the PRS noise
-  for(k in seq(0.1,1, by=0.1)){ #k being heritability
-    for(i in 1:20){ #i being the iteration/no. of replications
-      for(l in seq(0.1,1, by=0.1)){ #l being the tagged genetic variance
-    iteration <- i
-    
-h2 = k
+for(prs_noise in seq(0,1, by=0.1)){ #j being V_noise; the PRS noise
+  for(h2 in seq(0.1,1, by=0.1)){ #k being heritability
+    for(replica in 1:20){ #i being the iteration/no. of replications
+      for(tagged in seq(0.1,1, by=0.1)){ #l being the tagged genetic variance
+   
+replica = replica    
+h2 = h2
 V_P = 1
 V_A = h2*V_P
-V_Tagged = l*V_A 
+V_Tagged = tagged*V_A 
 V_nTagged = V_A - V_Tagged
 V_E = (1-h2)*V_P
 n = 10000
@@ -35,7 +35,8 @@ paternal_genetic_ntagged = rnorm(n, mean=0, sqrt(V_nTagged))
 #Creating a variable that accounts for all genetic variance
 maternal_genetic = maternal_genetic_tagged + maternal_genetic_ntagged
 paternal_genetic = paternal_genetic_tagged + paternal_genetic_ntagged
-    
+
+
 #Creating a genetic variable that accounts for all environmental variance
 maternal_environment = rnorm(n, mean=0, sd = sqrt(V_E))
 paternal_environment = rnorm(n, mean=0, sd = sqrt(V_E))
@@ -63,19 +64,19 @@ offspring_genetic = offspring_genetic_tagged + offspring_genetic_ntagged
 offspring_environment = rnorm(n, mean=0, sd = sqrt(V_E))
     
 offspring_phenotype = offspring_genetic + offspring_environment
-    
-    
+
+
 #Specifying a noise variance variable that is between 0-V_P
-V_noise = j
+V_noise = prs_noise
     
     
 #Simulating parental PRSs where PRSs are derived of parental tagged genetic variables + noise derived using the noise variance variable created in the previous step
 maternal_noise = rnorm(n, 0, sd=sqrt(V_noise))
 maternal_prs = maternal_genetic_tagged + maternal_noise
-    
+
 paternal_noise = rnorm(n, 0, sd=sqrt(V_noise)) 
 paternal_prs = paternal_genetic_tagged + paternal_noise 
-    
+
     
 #Simulating offspring PRSs derived from offspring tagged genetic variable + noise derived from the average parental noise and offspring noise
 offspring_prs = offspring_genetic_tagged + rnorm(n, 0, sd=sqrt(V_noise/2)) + (maternal_noise + paternal_noise)/2
@@ -89,37 +90,37 @@ offspring_genetic, offspring_environment, offspring_phenotype, offspring_prs)
     
 #Running separate regression models
 regression <- summary(lm(offspring_phenotype ~ offspring_prs, data=cohort))
-reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, prs_noise, replica, h2, tagged)  
 sym_1 <- rbind(sym_1,reginfo)
 write.table(sym_1, "sim_outcome_offprs", row.names=T, quote=F)
     
 regression <- summary(lm(offspring_phenotype ~ maternal_prs, data=cohort))
-reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, prs_noise, replica, h2, tagged)  
 sym_2 <- rbind(sym_2,reginfo)
 write.table(sym_2, "sim_outcome_matprs", row.names=T, quote=F)
     
 regression <- summary(lm(offspring_phenotype ~ paternal_prs, data=cohort))
-reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, prs_noise, replica, h2, tagged)  
 sym_3 <- rbind(sym_3,reginfo)
 write.table(sym_3, "sim_outcome_patprs", row.names=T, quote=F)
     
 regression <- summary(lm(offspring_phenotype ~ maternal_phenotype, data=cohort))
-reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, prs_noise, replica, h2, tagged)  
 sym_4 <- rbind(sym_4,reginfo)
 write.table(sym_4, "sim_outcome_matpheno", row.names=T, quote=F)
     
 regression <- summary(lm(offspring_phenotype ~ paternal_phenotype, data=cohort))
-reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, prs_noise, replica, h2, tagged)  
 sym_5 <- rbind(sym_5,reginfo)
 write.table(sym_5, "sim_outcome_patpheno", row.names=T, quote=F)
     
 regression <- summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs, data=cohort))
-reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, prs_noise, replica, h2, tagged)  
 sym_6 <- rbind(sym_6,reginfo)
 write.table(sym_6, "sim_outcome_trioprs", row.names=T, quote=F)
     
 regression <- summary(lm(offspring_phenotype ~ offspring_prs + maternal_prs + paternal_prs + maternal_phenotype + paternal_phenotype , data=cohort))
-reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, V_noise, iteration, k,l)  
+reginfo <-  cbind(regression$coefficients, regression$adj.r.squared, prs_noise, replica, h2, tagged)  
 sym_7 <- rbind(sym_7,reginfo)
 write.table(sym_7, "sim_outcome_trioprs_parentpheno", row.names=T, quote=F)}}}}
     
