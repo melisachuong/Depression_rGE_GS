@@ -38,9 +38,9 @@ Define the basic parameters for the simulation.
 V_P = 1 # phenotypic variance
 h2 = 0.5 # heritability (direct genetic effect proportion) (V_A/V_P)
 ige2 = 0.1 # indirect genetic effect proportion (2*V_IGE/V_P)
-s2 = 1 # proportion of V_A captured by polygenic scores
-r_a_ige = 0.0 # genetic correlation between direct and indirect effect
-n <- 1000000 # sample size (number of trios)
+s2 = 0.05 # proportion of V_A captured by polygenic scores
+r_a_ige = 0.1 # genetic correlation between direct and indirect effect
+n <- 100000 # sample size (number of trios)
 ```
 
 The remainder of the parameters can be defined from these.
@@ -49,14 +49,18 @@ Variance components:
 
 ```{r}
 V_A <- h2*V_P # additive genetic variance
+V_T <- V_A/2 # transmitted genetic variance
+V_NT <- V_A/2 # non-transmitted genetic variance
 V_IGE <- ige2*V_P/2 # indirect genetic variance
-V_PRS <- s2*V_A
+V_PRS <- s2*V_A # PRS variance
 ```
 
 which gives us
 
 ```{r}
 V_A
+V_T
+V_NT
 2*V_IGE
 V_PRS
 ```
@@ -68,47 +72,17 @@ COV_A_IGE = r_a_ige * sqrt(V_A * V_IGE)
 COV_A_IGE
 ```
 
-PRS has a correlation of `r prs2` with the additive genetic variance and has a transmitted and non-transmitted component.
-
+The transmitted and non-transmitted portions of the direct genetic effect will have half the covariance with the indirect genetic effect
 ```{r}
-V_T <- V_PRS/2
-V_NT <- V_PRS/2
+COV_T_IGE <- COV_A_IGE/2
+COV_NT_IGE <- COV_A_IGE/2
 ```
 
-Transmitted and non-transmitted PRS will be uncorrelated with each other
-```{r}
-COV_T_NT <- 0
-```
-
-\[
-\mathrm{cor}(T+NT, A) = \sqrt{\mathrm{s}^2}
-\]
-
-Expand the $\mathrm{cor}$ term
-
-\[
-\frac{\mathrm{cov}(T+NT, A)}{\sqrt{\mathrm{var}(T+NT)\mathrm{var}(A)}} = \mathrm{s}
-\]
-
-Substitute the sum of transmitted/non-transmitted variances
-\[
-\frac{\mathrm{cov}(T+NT, A)}{\sqrt{(\mathrm{var}(T)+\mathrm{var}(NT)-2\mathrm{cov}(T,NT))\mathrm{var}(A)}} = \mathrm{s}
-\]
-
-We established that $\mathrm{cov}(T,NT) = 0$
-\[
-\frac{\mathrm{cov}(T+NT, A)}{\sqrt{(\mathrm{var}(T)+\mathrm{var}(NT))\mathrm{var}(A)}} = \mathrm{s}
-\]
-
-\[
-\mathrm{cov}(T+NT, A) = s \times \sqrt{(\mathrm{var}(T)+\mathrm{var}(NT))\mathrm{var}(A)}
-\]
+PRS has a correlation of `r s2` with the additive genetic variance and has a transmitted and non-transmitted component as well.
 
 ```{r}
-COV_A_PRS <- sqrt(s2) * sqrt((V_T+V_NT)*V_A)
-COV_A_PRS
-COV_A_T <- COV_A_PRS/2
-COV_A_NT <- COV_A_PRS/2
+V_T_PRS <- V_PRS/2
+V_NT_PRS <- V_PRS/2
 ```
 
 The covariance of the PRS with the indirect genetic effect:
@@ -116,19 +90,25 @@ The covariance of the PRS with the indirect genetic effect:
 ```{r}
 COV_T_IGE <- COV_A_T * COV_A_IGE
 COV_NT_IGE <- COV_A_NT * COV_A_IGE
+COV_T_PRS_IGE <- COV_A_PRS * COV_T_IGE
+COV_NT_PRS_IGE <- COV_A_PRS * COV_NT_IGE
 COV_T_IGE
 COV_NT_IGE
+COV_T_PRS_IGE
+COV_NT_PRS_IGE
 ```
 
-The genetic effects variance-covariance matrix is a 4-by-4 matrix                 
+The genetic effects variance-covariance matrix is a 4-by-4 matrix. Transmitted and non-transmitted effects will be uncorrelated with each other.                 
                   
 ```{r}
-genetic_effect_names <- c('direct', 'trans', 'nontrans', 'indirect')
-Sigma = matrix(c(V_A,       COV_A_T,   COV_A_NT,   COV_A_IGE,
-                 COV_A_T,   V_T,       COV_T_NT,   COV_T_IGE,
-                 COV_A_NT,  COV_T_NT,  V_NT,       COV_NT_IGE,
-                 COV_A_IGE, COV_T_IGE, COV_NT_IGE, V_IGE),
-             nrow=4, ncol=4, byrow=T, dimnames=list(genetic_effect_names, genetic_effect_names))
+genetic_effect_names <- 
+                 c('A_T',         'PRS_T',    'A_NT',        'PRS_NT',       'indirect')
+Sigma = matrix(c(    V_T,         V_T_PRS,         0,               0,       COV_T_IGE,
+                 V_T_PRS,         V_T_PRS,         0,               0,   COV_T_PRS_IGE,
+                       0,               0,       V_NT,       V_NT_PRS,      COV_NT_IGE,
+                       0,               0,   V_NT_PRS,       V_NT_PRS,  COV_NT_PRS_IGE,
+                 COV_T_IGE, COV_T_PRS_IGE, COV_NT_IGE, COV_NT_PRS_IGE,           V_IGE),
+             nrow=5, ncol=5, byrow=T, dimnames=list(genetic_effect_names, genetic_effect_names))
 Sigma
 ```
 
@@ -149,7 +129,7 @@ paternal_genetic <- data.frame(rmvnorm(n, sigma=Sigma))
 names(maternal_genetic) <- names(paternal_genetic) <- genetic_effect_names
 ```
 
-This yields matrices of size $n \times 4$, so the first column is the direct effect, columns two and three are the transmitted and non-transmitted PRS effects, and the fourth column is the indirect genetic (nurture) effect.
+This yields matrices of size $n \times 5$, so the first and second columns are the transmitted genetic and PRS effects, the third and fourth columns are the nontransmitted effects, and the fifth column is the indirect effect
 
 ```{r}
 head(maternal_genetic)
@@ -169,8 +149,10 @@ paternal_environment <- rnorm(n, sd=sqrt(V_E+2*COV_A_IGE))
 Add up components to create parental phenotypes
 
 ```{r}
-maternal_phenotype <- maternal_genetic$direct + maternal_genetic_nurture + maternal_environment
-paternal_phenotype <- paternal_genetic$direct + paternal_genetic_nurture + paternal_environment
+maternal_genetic_direct <- maternal_genetic$A_T + maternal_genetic$A_NT
+maternal_phenotype <- maternal_genetic_direct + maternal_genetic_nurture + maternal_environment
+paternal_genetic_direct <- paternal_genetic$A_T + paternal_genetic$A_NT
+paternal_phenotype <- paternal_genetic_direct + paternal_genetic_nurture + paternal_environment
 ```
 
 Check that the variances of the parental phenotpyes are as expected $\approx V_\mathrm{P}$ = `r V_P`.
@@ -181,20 +163,18 @@ var(paternal_phenotype)
 
 The transmitted and non-transmitted PRS add up to the total parental PRS
 ```{r}
-maternal_prs <- maternal_genetic$trans + maternal_genetic$nontrans
-paternal_prs <- paternal_genetic$trans + paternal_genetic$nontrans
+maternal_prs <- maternal_genetic$PRS_T + maternal_genetic$PRS_NT
+paternal_prs <- paternal_genetic$PRS_T + paternal_genetic$PRS_NT
 ```
 
 Create offspring components
 
 ```{r}
-offspring_genetic_inherited <- (maternal_genetic$direct + paternal_genetic$direct)/2  # average of parents
-offspring_genetic_segregation <- rnorm(n, sd=sqrt(V_A/2)) # segregation variance is half of the additive genetic variance
-offspring_genetic_direct <- offspring_genetic_inherited + offspring_genetic_segregation # effect of offspring's genes on their own phenotype
+offspring_genetic_direct <- maternal_genetic$A_T + paternal_genetic$A_T  # transmitted effects
 offspring_genetic_nurture <- maternal_genetic$indirect + paternal_genetic$indirect # indirect genetic effects of parents on offspring
 offspring_environment <- rnorm(n=n, sd=sqrt(V_E))
 offspring_phenotype <- offspring_genetic_direct + offspring_genetic_nurture + offspring_environment
-offspring_prs <- (maternal_genetic$trans + paternal_genetic$trans)
+offspring_prs <- (maternal_genetic$PRS_T + paternal_genetic$PRS_T) # PRS from parental transmitted PRS values
 ```
 
 
