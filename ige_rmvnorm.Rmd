@@ -1,0 +1,146 @@
+---
+title: "Correlated direct-indirect genetic effect simulations"
+author: "Mark Adams"
+output: html_notebook
+---
+
+```{r}
+library(mvtnorm)
+```
+
+# Model
+
+The variance component model we are simulating is:
+
+\[
+V_\mathrm{P} = V_\mathrm{A} + 2V_\mathrm{IGE} + V_\mathrm{E}
+\]
+
+where
+
+- $V_\mathrm{P}$ is the phenotypic variance
+- $V_\mathrm{A}$ is the direct genetic effect variance (additive genetic variance)
+- $V_\mathrm{IGE}$ is the indirect genetic effect variance (effect of parents' genes via the environment on their offspring). The contribution of the variance is doubled because there is an effect from each parent
+- $V_\mathrm{E}$ is the environment variance
+
+and where $V_\mathrm{A}$ and $V_\mathrm{IGE}$ are correlated 
+
+\[
+\Sigma = \begin{bmatrix} V_\mathrm{A} & COV_\mathrm{A,IGE} \\
+                  COV_\mathrm{A,IGE} & V_\mathrm{IGE}\end{bmatrix}
+\]
+       
+# Parameters
+
+Define the basic parameters for the simulation. 
+
+```{r}
+V_P = 1 # phenotypic variance
+h2 = 0.5 # heritability (direct genetic effecr proportion) (V_A/V_P)
+ige2 = 0.1 # indirect genetic effect proportion (2*V_IGE/V_P)
+r_a_ige = 0.15 # genetic correlation between direct and indirect effect
+n <- 10000 # sample size (number of trios)
+```
+
+The remainder of the parameters can be defined from these.
+
+Variance components:
+
+```{r}
+V_A <- h2*V_P # additive genetic variance
+V_IGE <- ige2*V_P/2 # indirect genetic variance
+```
+
+which gives us
+
+```{r}
+V_A
+2*V_IGE
+```
+
+
+
+We also need the covariance between $V_\mathrm{A}$ and $V_\mathrm{IGE}$, $COV_\mathrm{A,IGE}$. Since the correlation is $r_\mathrm{a,ige} = COV_\mathrm{A,IGE} / \sqrt{V_\mathrm{A} \times V_\mathrm{IGE}}$, then $COV_\mathrm{A,IGE} = r_\mathrm{a,ige} \times \sqrt{V_\mathrm{A}\times V_\mathrm{IGE}}$
+
+```{r}
+COV_A_IGE = r_a_ige * sqrt(V_A * V_IGE)
+COV_A_IGE
+```
+
+The genetic variance-covariance matrix is a 2-by-2 matrix                 
+                  
+```{r}
+Sigma = matrix(c(V_A,       COV_A_IGE,
+             COV_A_IGE,     V_IGE),
+             nrow=2, ncol=2, byrow=2)
+Sigma
+```
+
+When determining the residual variance for the environment effect, the increase in variance from the covariance between the direct and indirect effects also needs to be subtracted. The variance of the sum of two variables is $\mathrm{var}(X+Y) = \mathrm{var}(X) + \mathrm{var}(Y) - 2\mathrm{cov}(X, Y)$. While there are two $V_\mathrm{IGE}$ components contributing (one from each parent) we only need to remove $2COV_\mathrm{A,IGE}$ because the covariance we defined above is that between a target's direct genetic effect on themselves and the indirect effect on the target's offspring but the contribution of this covariance to the phenotypic variance is between a target's direct genetic effect on the target's phenotype and the parents' (summed) indirect effect on the target's phenotype
+
+```{r}
+V_E = V_P - V_A - 2*V_IGE - 2*COV_A_IGE
+V_E
+```
+
+# Simulation
+
+For simulating data from the covariance matrix, the function `rmvnorm` is the multivariate equivalent of `rnorm`, parameterised by a vector of means and a covariance matrix `sigma`. Simulate genetic effects for mothers and fathers
+
+```{r}
+maternal_genetic_effects <- rmvnorm(n, sigma=Sigma)
+paternal_genetic_effects <- rmvnorm(n, sigma=Sigma)
+```
+
+This yields matrices of size $n \times 2$, so the first column is the direct effect and the second column is the indirect effect.
+
+```{r}
+maternal_genetic_direct <- maternal_genetic_effects[,1]
+maternal_genetic_indirect <- maternal_genetic_effects[,2]
+paternal_genetic_direct <- paternal_genetic_effects[,1]
+paternal_genetic_indirect <- paternal_genetic_effects[,2]
+```
+
+Note that the indirect effects here effect the phenotype of the offspring.
+
+Simulate the other components of the parental phenotypes. Since we are simulating the grandparental indirect effect separately from the parental direct effects, we need to make up the missing variance by adding their covariance term into the residual (environmental )
+
+```{r}
+maternal_grandparents_genetic_indirect <- rnorm(n, sd=sqrt(2*V_IGE)) # mother's parents' (combined) indirect effects (on the mother's phenotype)
+paternal_grandparents_genetic_indirect <- rnorm(n, sd=sqrt(2*V_IGE)) # father's parents' (combined) indirect effects (on the mother's phenotype)
+maternal_environment <- rnorm(n, sd=sqrt(V_E+2*COV_A_IGE))
+paternal_environment <- rnorm(n, sd=sqrt(V_E+2*COV_A_IGE))
+```
+
+Add up components to create parental phenotypes
+
+```{r}
+maternal_phenotype <- maternal_genetic_direct + maternal_grandparents_genetic_indirect + maternal_environment
+paternal_phenotype <- paternal_genetic_direct + paternal_grandparents_genetic_indirect + paternal_environment
+```
+
+Check that the variances of the parental phenotpyes are as expected $\approx V_\mathrm{P}$ = `r V_P`.
+```{r}
+var(maternal_phenotype)
+var(paternal_phenotype)
+```
+
+Create offspring components
+
+```{r}
+offspring_genetic_direct <- (maternal_genetic_direct + paternal_genetic_direct)/2 + rnorm(n=n, sd=sqrt(V_A/2)) # average of parents plus segregation variance
+offspring_parent_genetic_indirect <- maternal_genetic_indirect + paternal_genetic_indirect # indirect genetic effects of parents on offspring
+offspring_environment <- rnorm(n=n, sd=sqrt(V_E))
+offspring_phenotype <- offspring_genetic_direct + offspring_parent_genetic_indirect + offspring_environment
+```
+
+
+```{r}
+var(offspring_genetic_direct)
+var(offspring_parent_genetic_indirect)
+var(offspring_environment)
+var(offspring_phenotype)
+```
+
+
+
