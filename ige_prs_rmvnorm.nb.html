@@ -1773,7 +1773,17 @@ summary {
 <!-- rnb-text-begin -->
 <div id="model" class="section level1">
 <h1>Model</h1>
-<p>The variance component model we are simulating is:</p>
+<p>The phenotype <span class="math inline">\(P\)</span> is defined as</p>
+<p><span class="math display">\[
+\mathrm{P} = \mathrm{A} + \mathrm{IGE}_\mathrm{maternal} + \mathrm{IGE}_\mathrm{paternal} + \mathrm{E} 
+\]</span></p>
+<p>where</p>
+<ul>
+<li><span class="math inline">\(\mathrm{A}\)</span> is the additive genetic effect</li>
+<li><span class="math inline">\(\mathrm{IGE}\)</span> is the indirect genetic effect from the mother and father. <span class="math inline">\(\mathrm{IGE}_\mathrm{maternal} + \mathrm{IGE}_\mathrm{paternal}\)</span> can be considered the genetic nurture effect.</li>
+<li>$ is the individual environment effect</li>
+</ul>
+<p>The variance component model we are simulating is therefore:</p>
 <p><span class="math display">\[
 V_\mathrm{P} = V_\mathrm{A} + 2V_\mathrm{IGE} + V_\mathrm{E}
 \]</span></p>
@@ -1786,8 +1796,13 @@ V_\mathrm{P} = V_\mathrm{A} + 2V_\mathrm{IGE} + V_\mathrm{E}
 </ul>
 <p>and where <span class="math inline">\(V_\mathrm{A}\)</span> and <span class="math inline">\(V_\mathrm{IGE}\)</span> are correlated</p>
 <p><span class="math display">\[
-\Sigma = \begin{bmatrix} V_\mathrm{A} &amp; COV_\mathrm{A,IGE} \\
-                  COV_\mathrm{A,IGE} &amp; V_\mathrm{IGE}\end{bmatrix}
+\Sigma = \begin{bmatrix} V_\mathrm{A}       &amp; COV_\mathrm{A,IGE} \\
+                         COV_\mathrm{A,IGE} &amp; V_\mathrm{IGE}
+          \end{bmatrix}
+\]</span></p>
+<p>We also simulate a polygenic score (PRS) that is an estimate of <span class="math inline">\(\mathrm{A}\)</span> based on GWAS data and define it based on the proportion of <span class="math inline">\(V\mathrm{A}\)</span> that it captures. As a proxy of <span class="math inline">\(\mathrm{IGE}\)</span>, we split the PRS into “transmitted” (<span class="math inline">\(\mathrm{T}\)</span>) and “nontransmitted” (<span class="math inline">\(\mathrm{NT}\)</span>) scores, so we define</p>
+<p><span class="math display">\[
+\mathrm{A} = \mathrm{T} + \mathrm{NT}
 \]</span></p>
 </div>
 <div id="parameters" class="section level1">
@@ -1795,12 +1810,12 @@ V_\mathrm{P} = V_\mathrm{A} + 2V_\mathrm{IGE} + V_\mathrm{E}
 <p>Define the basic parameters for the simulation.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuVl9QID0gMSAjIHBoZW5vdHlwaWMgdmFyaWFuY2VcbmgyID0gMC41ICMgaGVyaXRhYmlsaXR5IChkaXJlY3QgZ2VuZXRpYyBlZmZlY3QgcHJvcG9ydGlvbikgKFZfQS9WX1ApXG5pZ2UyID0gMC4xICMgaW5kaXJlY3QgZ2VuZXRpYyBlZmZlY3QgcHJvcG9ydGlvbiAoMipWX0lHRS9WX1ApXG5zMiA9IDAuMDUgIyBwcm9wb3J0aW9uIG9mIFZfQSBjYXB0dXJlZCBieSBwb2x5Z2VuaWMgc2NvcmVzXG5yX2FfaWdlID0gMC4xICMgZ2VuZXRpYyBjb3JyZWxhdGlvbiBiZXR3ZWVuIGRpcmVjdCBhbmQgaW5kaXJlY3QgZWZmZWN0XG5uIDwtIDEwMDAwMCAjIHNhbXBsZSBzaXplIChudW1iZXIgb2YgdHJpb3MpXG5gYGAifQ== -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuVl9QID0gMSAjIHBoZW5vdHlwaWMgdmFyaWFuY2VcbmgyID0gMC41ICMgaGVyaXRhYmlsaXR5IChkaXJlY3QgZ2VuZXRpYyBlZmZlY3QgcHJvcG9ydGlvbikgKFZfQS9WX1ApXG5pZ2UyID0gMC4xICMgaW5kaXJlY3QgZ2VuZXRpYyBlZmZlY3QgcHJvcG9ydGlvbiAoMipWX0lHRS9WX1ApXG5zMiA9IDAuMDUgIyBwcm9wb3J0aW9uIG9mIFZfQSBjYXB0dXJlZCBieSBwb2x5Z2VuaWMgc2NvcmVzXG5yX2FfaWdlID0gMC4zICMgZ2VuZXRpYyBjb3JyZWxhdGlvbiBiZXR3ZWVuIGRpcmVjdCBhbmQgaW5kaXJlY3QgZWZmZWN0XG5uIDwtIDEwMDAwMCAjIHNhbXBsZSBzaXplIChudW1iZXIgb2YgdHJpb3MpXG5gYGAifQ== -->
 <pre class="r"><code>V_P = 1 # phenotypic variance
 h2 = 0.5 # heritability (direct genetic effect proportion) (V_A/V_P)
 ige2 = 0.1 # indirect genetic effect proportion (2*V_IGE/V_P)
 s2 = 0.05 # proportion of V_A captured by polygenic scores
-r_a_ige = 0.1 # genetic correlation between direct and indirect effect
+r_a_ige = 0.3 # genetic correlation between direct and indirect effect
 n &lt;- 100000 # sample size (number of trios)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
@@ -1853,15 +1868,22 @@ V_PRS &lt;- s2*V_A # PRS variance</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
-<p>We also need the covariance between <span class="math inline">\(V_\mathrm{A}\)</span> and <span class="math inline">\(V_\mathrm{IGE}\)</span>, <span class="math inline">\(COV_\mathrm{A,IGE}\)</span>. Since the correlation is <span class="math inline">\(r_\mathrm{a,ige} = COV_\mathrm{A,IGE} / \sqrt{V_\mathrm{A} \times V_\mathrm{IGE}}\)</span>, then <span class="math inline">\(COV_\mathrm{A,IGE} = r_\mathrm{a,ige} \times \sqrt{V_\mathrm{A}\times V_\mathrm{IGE}}\)</span></p>
+<p>We also need the covariance between <span class="math inline">\(V_\mathrm{A}\)</span> and <span class="math inline">\(V_\mathrm{IGE}\)</span>, <span class="math inline">\(COV_\mathrm{A,IGE}\)</span>. Since the correlation is</p>
+<p><span class="math display">\[
+r_\mathrm{a,ige} = \frac{COV_\mathrm{A,IGE}}{\sqrt{V_\mathrm{A} \times V_\mathrm{IGE}}}
+\]</span></p>
+<p>then</p>
+<p><span class="math display">\[
+COV_\mathrm{A,IGE} = r_\mathrm{a,ige} \times \sqrt{V_\mathrm{A}\times V_\mathrm{IGE}}
+\]</span></p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuQ09WX0FfSUdFID0gcl9hX2lnZSAqIHNxcnQoVl9BICogVl9JR0UpXG5DT1ZfQV9JR0VcbmBgYCJ9 -->
 <pre class="r"><code>COV_A_IGE = r_a_ige * sqrt(V_A * V_IGE)
 COV_A_IGE</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDE1ODExMzlcbiJ9 -->
-<pre><code>[1] 0.01581139</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDQ3NDM0MTZcbiJ9 -->
+<pre><code>[1] 0.04743416</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -1883,7 +1905,22 @@ V_NT_PRS &lt;- V_PRS/2</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
-<p>The covariance of the PRS with the indirect genetic effect:</p>
+<p>The covariance of the transmitted and non-transmitted PRS with the total genetic effects:</p>
+<p><span class="math display">\[
+s = \frac{COV_\mathrm{T,PRS_T}}{\sqrt{V_TV_\mathrm{PRS_T}}}
+\]</span> Rearrange:</p>
+<p><span class="math display">\[
+COV_\mathrm{T,PRS_T} = s \sqrt{V_TV_\mathrm{PRS_T}}
+\]</span></p>
+<p>Substitute value of <span class="math inline">\(s^2 = V_\mathrm{PRS_T} / V_T\)</span></p>
+<p><span class="math display">\[
+\begin{aligned}
+COV_\mathrm{T,PRS_T} &amp; = \sqrt{\frac{V_\mathrm{PRS_T}}{V_T}}\sqrt{V_TV_\mathrm{PRS_T}} \\
+&amp; = \sqrt{V_\mathrm{PRS_T}} \sqrt{V_\mathrm{PRS_T}} \sqrt{\frac{1}{V_T}}\sqrt{V_T} \\
+&amp; = V_\mathrm{PRS_T}
+\end{aligned}
+\]</span></p>
+<p>The covariance of the transmitted and non-transmitted PRS with the indirect genetic effect:</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuQ09WX1RfSUdFIDwtIENPVl9BX1QgKiBDT1ZfQV9JR0VcbkNPVl9OVF9JR0UgPC0gQ09WX0FfTlQgKiBDT1ZfQV9JR0VcbkNPVl9UX1BSU19JR0UgPC0gQ09WX0FfUFJTICogQ09WX1RfSUdFXG5DT1ZfTlRfUFJTX0lHRSA8LSBDT1ZfQV9QUlMgKiBDT1ZfTlRfSUdFXG5DT1ZfVF9JR0VcbmBgYCJ9 -->
@@ -1893,26 +1930,26 @@ COV_T_PRS_IGE &lt;- COV_A_PRS * COV_T_IGE
 COV_NT_PRS_IGE &lt;- COV_A_PRS * COV_NT_IGE
 COV_T_IGE</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDAzOTUyODQ3XG4ifQ== -->
-<pre><code>[1] 0.003952847</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDExODU4NTRcbiJ9 -->
+<pre><code>[1] 0.01185854</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuQ09WX05UX0lHRVxuYGBgIn0= -->
 <pre class="r"><code>COV_NT_IGE</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDAzOTUyODQ3XG4ifQ== -->
-<pre><code>[1] 0.003952847</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDExODU4NTRcbiJ9 -->
+<pre><code>[1] 0.01185854</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuQ09WX1RfUFJTX0lHRVxuYGBgIn0= -->
 <pre class="r"><code>COV_T_PRS_IGE</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDAwNDQxOTQxN1xuIn0= -->
-<pre><code>[1] 0.0004419417</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDAxMzI1ODI1XG4ifQ== -->
+<pre><code>[1] 0.001325825</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuQ09WX05UX1BSU19JR0VcbmBgYCJ9 -->
 <pre class="r"><code>COV_NT_PRS_IGE</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDAwNDQxOTQxN1xuIn0= -->
-<pre><code>[1] 0.0004419417</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDAxMzI1ODI1XG4ifQ== -->
+<pre><code>[1] 0.001325825</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -1930,25 +1967,25 @@ Sigma = matrix(c(    V_T,         V_T_PRS,         0,               0,       COV
              nrow=5, ncol=5, byrow=T, dimnames=list(genetic_effect_names, genetic_effect_names))
 Sigma</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiICAgICAgICAgICAgICAgICBBX1QgICAgICAgIFBSU19UICAgICAgICBBX05UICAgICAgIFBSU19OVCAgICAgaW5kaXJlY3RcbkFfVCAgICAgIDAuMjUwMDAwMDAwIDAuMDEyNTAwMDAwMCAwLjAwMDAwMDAwMCAwLjAwMDAwMDAwMDAgMC4wMDM5NTI4NDcxXG5QUlNfVCAgICAwLjAxMjUwMDAwMCAwLjAxMjUwMDAwMDAgMC4wMDAwMDAwMDAgMC4wMDAwMDAwMDAwIDAuMDAwNDQxOTQxN1xuQV9OVCAgICAgMC4wMDAwMDAwMDAgMC4wMDAwMDAwMDAwIDAuMjUwMDAwMDAwIDAuMDEyNTAwMDAwMCAwLjAwMzk1Mjg0NzFcblBSU19OVCAgIDAuMDAwMDAwMDAwIDAuMDAwMDAwMDAwMCAwLjAxMjUwMDAwMCAwLjAxMjUwMDAwMDAgMC4wMDA0NDE5NDE3XG5pbmRpcmVjdCAwLjAwMzk1Mjg0NyAwLjAwMDQ0MTk0MTcgMC4wMDM5NTI4NDcgMC4wMDA0NDE5NDE3IDAuMDUwMDAwMDAwMFxuIn0= -->
-<pre><code>                 A_T        PRS_T        A_NT       PRS_NT     indirect
-A_T      0.250000000 0.0125000000 0.000000000 0.0000000000 0.0039528471
-PRS_T    0.012500000 0.0125000000 0.000000000 0.0000000000 0.0004419417
-A_NT     0.000000000 0.0000000000 0.250000000 0.0125000000 0.0039528471
-PRS_NT   0.000000000 0.0000000000 0.012500000 0.0125000000 0.0004419417
-indirect 0.003952847 0.0004419417 0.003952847 0.0004419417 0.0500000000</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiICAgICAgICAgICAgICAgIEFfVCAgICAgICBQUlNfVCAgICAgICBBX05UICAgICAgUFJTX05UICAgIGluZGlyZWN0XG5BX1QgICAgICAwLjI1MDAwMDAwIDAuMDEyNTAwMDAwIDAuMDAwMDAwMDAgMC4wMDAwMDAwMDAgMC4wMTE4NTg1NDFcblBSU19UICAgIDAuMDEyNTAwMDAgMC4wMTI1MDAwMDAgMC4wMDAwMDAwMCAwLjAwMDAwMDAwMCAwLjAwMTMyNTgyNVxuQV9OVCAgICAgMC4wMDAwMDAwMCAwLjAwMDAwMDAwMCAwLjI1MDAwMDAwIDAuMDEyNTAwMDAwIDAuMDExODU4NTQxXG5QUlNfTlQgICAwLjAwMDAwMDAwIDAuMDAwMDAwMDAwIDAuMDEyNTAwMDAgMC4wMTI1MDAwMDAgMC4wMDEzMjU4MjVcbmluZGlyZWN0IDAuMDExODU4NTQgMC4wMDEzMjU4MjUgMC4wMTE4NTg1NCAwLjAwMTMyNTgyNSAwLjA1MDAwMDAwMFxuIn0= -->
+<pre><code>                A_T       PRS_T       A_NT      PRS_NT    indirect
+A_T      0.25000000 0.012500000 0.00000000 0.000000000 0.011858541
+PRS_T    0.01250000 0.012500000 0.00000000 0.000000000 0.001325825
+A_NT     0.00000000 0.000000000 0.25000000 0.012500000 0.011858541
+PRS_NT   0.00000000 0.000000000 0.01250000 0.012500000 0.001325825
+indirect 0.01185854 0.001325825 0.01185854 0.001325825 0.050000000</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
-<p>When determining the residual variance for the environment effect, the increase in variance from the covariance between the direct and indirect effects also needs to be subtracted. The variance of the sum of two variables is <span class="math inline">\(\mathrm{var}(X+Y) = \mathrm{var}(X) + \mathrm{var}(Y) - 2\mathrm{cov}(X, Y)\)</span>. While there are two <span class="math inline">\(V_\mathrm{IGE}\)</span> components contributing (one from each parent) we only need to remove <span class="math inline">\(2COV_\mathrm{A,IGE}\)</span> because the covariance we defined above is that between a target’s direct genetic effect on themselves and the indirect effect on the target’s offspring but the contribution of this covariance to the phenotypic variance is between a target’s direct genetic effect on the target’s phenotype and the parents’ (summed) indirect effect on the target’s phenotype</p>
+<p>When determining the residual variance for the environment effect, the increase in variance from the covariance between the direct and indirect effects also needs to be subtracted. The variance of the sum of two variables is <span class="math inline">\(\mathrm{var}(X+Y) = \mathrm{var}(X) + \mathrm{var}(Y) - 2\mathrm{cov}(X, Y)\)</span>. While there are two <span class="math inline">\(V_\mathrm{IGE}\)</span> components contributing (one from each parent) we only need to remove <span class="math inline">\(COV_\mathrm{A,IGE}\)</span> because the covariance we defined above is that between a target’s direct genetic effect on themselves and the indirect effect on the target’s offspring but the contribution of this covariance to the phenotypic variance is between a target’s direct genetic effect on the target’s phenotype and the parents’ (summed) indirect effect on the target’s phenotype</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuVl9FID0gVl9QIC0gVl9BIC0gMipWX0lHRSAtIDIqQ09WX0FfSUdFXG5WX0VcbmBgYCJ9 -->
-<pre class="r"><code>V_E = V_P - V_A - 2*V_IGE - 2*COV_A_IGE
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuVl9FID0gVl9QIC0gVl9BIC0gMipWX0lHRSAtIENPVl9BX0lHRVxuVl9FXG5gYGAifQ== -->
+<pre class="r"><code>V_E = V_P - V_A - 2*V_IGE - COV_A_IGE
 V_E</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMzY4Mzc3MlxuIn0= -->
-<pre><code>[1] 0.3683772</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMzUyNTY1OFxuIn0= -->
+<pre><code>[1] 0.3525658</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -1971,10 +2008,10 @@ names(maternal_genetic) &lt;- names(paternal_genetic) &lt;- genetic_effect_names
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaGVhZChtYXRlcm5hbF9nZW5ldGljKVxuYGBgIn0= -->
 <pre class="r"><code>head(maternal_genetic)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-frame-begin eyJtZXRhZGF0YSI6eyJjbGFzc2VzIjpbImRhdGEuZnJhbWUiXSwibnJvdyI6NiwibmNvbCI6NX0sInJkZiI6Ikg0c0lBQUFBQUFBQUF3dHlpVERtaXVCaVlHQmdabUFCWW1aV0lKT0JOVFRFVGRlQ2dZR0ZDY2hoQkVwd2d1Z0tvQ0poa0N3UTh3RXgyLzVqclBkOWRYTHo5OTg0YnR6Lzc3L0EvczlQanVyNi9tV3l2MklVN3IrM2dYSC9OZUd0V3V0MTIvZWYyT0phK2FsZ0VsemZxcnNNYkhhaTl2dW5oNGl0UDhiNGNQL0c3V1VKdFc2MjlnY2xTOTdjTTk2eGY4cTcvT0F6c25QczF5WUthMHQrMUlQcHM1L3duZEZ5cm0zMS9ub1ZhUmtaYlhIN1IyYm5WaHRuenJZL3pYdkY2Y2JPNi91ZkhYaThmUDQxTC91SDFyS0NTMXpxNFBvV1RmNGdhSEg4cVAzbU56TVBKa3krYUwvZ2FmZU03dTlyOXgvNzY3QTkrMjZDZlJqWGpoblRJOWpzajlZS0g1d2ZHUXgzNTB5aDN5eXZwaisyWDNyKzlrM0hscXYyeTVtKzNYOGlQTm0rWFd4RjY4ZDNXZlpYM21ZcUdWM08yYi9ic2xkQk12MEpXb0N4NWlYbXBoWURHUUxnUUlNSU1qdkdoOERrQTRLQzRSd1d4M2cvR0pzTkpBSG5jV1RtcFdRV3BTYVhvQm5QV1pSZnJnZXpnaGVJbVJvWXdJQU4zUjNKT1luRk1IZkFCTGxTRWtzUzlkS0tnUHFCdkg5b1d0anpDMG95OC9PQW1waGdNWTZzbWJFSVRVQ2dOQS9ra2hUZDVJelN2R3hkUTJPUURXQjVDT2FGMG14SWJGYUluVXovMFVLSUxUVXZQVE12RmViNG5NU2sxQndvaHcvb1piQ1A5UXFLTXZOS1lGNEJpaGJybGVTWEpNTFVjU1huNThCRXdKNWorQWNBdTQ1OW11a0NBQUE9In0= -->
+<!-- rnb-frame-begin eyJtZXRhZGF0YSI6eyJjbGFzc2VzIjpbImRhdGEuZnJhbWUiXSwibnJvdyI6NiwibmNvbCI6NX0sInJkZiI6Ikg0c0lBQUFBQUFBQUF3dHlpVERtaXVCaVlHQmdabUFCWW1aV0lKT0JOVFRFVGRlQ2dZR0ZDY2hoQkVwd2d1Z0tvQ0poa0N3UTh3RXgyLzZYR21iYWV3K3E3Nzl4ZXFWYzZtL1QvWThPRkNsSXFweTNmK1lmV1N0NlRHai90UUNENU42NHpmYTNFZ1JaRjNtbHdmVFpkOXkxY0UvWnVHSC80dXp1aG5VTDUrNWZ4aFh4WTFYbE0vdURNUjFkZWNLZjdYZXBUVmlicEx6Ui9tSU9XL3hFMmJ0dys2N2FWM2hVRnlmYjMzMXo1Q2hQTy8vK2l6ZVkvaTRNQ2JSL2V1TDE3TFZlRSt6djFESyt0YitxYUgrYlJYcVR6cGsrdUgzZHYvLytsVjVuYW4vR2VlVnNXNy9FL2VVUDFhN1VSTXZzWDVXZStrUHoybXY3UFZQbThKc2ZtYkovV2tWT0tkZTFoWEQ3Ymw5cDM1citTWEwvS1k3U3hNMVBMK3cvVlQrMVRlbFR4djcxS29VT0xWcHAreGM5K2FwcHMyV0ovZUs2ZFUxKzNjcG9BY2FhbDVpYldneGtDSUFERFNMSTdCZ2ZBcE1QQ0FxR2MxZ2M0LzFnYkRhUUJKekhrWm1Ya2xtVW1seUNaanhuVVg2NUhzd0tYaUJtYW1BQUF6WjBkeVRuSkJiRDNBRVQ1RXBKTEVuVVN5c0M2Z2Z5L3FGcFljOHZLTW5NendOcVlvTEZPTEpteGlJMEFZSFNQSkJMVW5TVE0wcnpzblVOalVBMmdPVWhtQmRLc3lHeFdTRjJNdjFIQ3lHMjFMejB6THhVbU9OekVwTlNjNkFjUHFDWHdUN1dLeWpLekN1QmVRVW9XcXhYa2wrU0NGUEhsWnlmQXhNQmU0N2hId0NwZlQwYTZRSUFBQT09In0= -->
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
-{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["A_T"],"name":[1],"type":["dbl"],"align":["right"]},{"label":["PRS_T"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["A_NT"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["PRS_NT"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["indirect"],"name":[5],"type":["dbl"],"align":["right"]}],"data":[{"1":"-0.1720542","2":"-0.05246735","3":"0.016567248","4":"0.03628493","5":"-0.02448647","_rn_":"1"},{"1":"-0.3871583","2":"-0.02278171","3":"-0.007602793","4":"0.07782899","5":"0.04260146","_rn_":"2"},{"1":"-1.2433521","2":"-0.06920566","3":"0.569190344","4":"0.03300129","5":"0.04494449","_rn_":"3"},{"1":"0.3155726","2":"0.13358938","3":"0.211359532","4":"-0.17960366","5":"0.01127369","_rn_":"4"},{"1":"-0.3449529","2":"-0.02044081","3":"-0.711046054","4":"0.00134533","5":"0.32699040","_rn_":"5"},{"1":"-0.1930014","2":"0.05738125","3":"0.538466010","4":"0.16787955","5":"-0.10634691","_rn_":"6"}],"options":{"columns":{"min":{},"max":[10],"total":[5]},"rows":{"min":[10],"max":[10],"total":[6]},"pages":{}}}
+{"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["A_T"],"name":[1],"type":["dbl"],"align":["right"]},{"label":["PRS_T"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["A_NT"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["PRS_NT"],"name":[4],"type":["dbl"],"align":["right"]},{"label":["indirect"],"name":[5],"type":["dbl"],"align":["right"]}],"data":[{"1":"-0.7861586","2":"0.01214069","3":"-0.3319989","4":"0.013664231","5":"-0.43484681","_rn_":"1"},{"1":"-0.3874305","2":"-0.03792988","3":"0.4675762","4":"0.220814896","5":"-0.20338313","_rn_":"2"},{"1":"-0.5859919","2":"-0.04304770","3":"-0.2788093","4":"-0.005829956","5":"-0.20701856","_rn_":"3"},{"1":"0.6971862","2":"0.13563639","3":"0.6807764","4":"-0.051570117","5":"-0.06082491","_rn_":"4"},{"1":"-0.3486443","2":"0.10215096","3":"0.4451299","4":"0.111642603","5":"-0.03690306","_rn_":"5"},{"1":"0.4121134","2":"0.27221832","3":"0.4221257","4":"-0.021943755","5":"0.03807588","_rn_":"6"}],"options":{"columns":{"min":{},"max":[10],"total":[5]},"rows":{"min":[10],"max":[10],"total":[6]},"pages":{}}}
   </script>
 </div>
 <!-- rnb-frame-end -->
@@ -1984,11 +2021,11 @@ names(maternal_genetic) &lt;- names(paternal_genetic) &lt;- genetic_effect_names
 <p>Simulate the other components of the parental phenotypes. Since we are simulating the grandparental indirect effect separately from the parental direct effects, we need to make up the missing variance by adding their covariance term into the residual (environmental )</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubWF0ZXJuYWxfZ2VuZXRpY19udXJ0dXJlIDwtIHJub3JtKG4sIHNkPXNxcnQoMipWX0lHRSkpICMgbW90aGVyJ3MgcGFyZW50cycgKGNvbWJpbmVkKSBpbmRpcmVjdCBlZmZlY3RzIChvbiB0aGUgbW90aGVyJ3MgcGhlbm90eXBlKVxucGF0ZXJuYWxfZ2VuZXRpY19udXJ0dXJlIDwtIHJub3JtKG4sIHNkPXNxcnQoMipWX0lHRSkpICMgZmF0aGVyJ3MgcGFyZW50cycgKGNvbWJpbmVkKSBpbmRpcmVjdCBlZmZlY3RzIChvbiB0aGUgbW90aGVyJ3MgcGhlbm90eXBlKVxubWF0ZXJuYWxfZW52aXJvbm1lbnQgPC0gcm5vcm0obiwgc2Q9c3FydChWX0UrMipDT1ZfQV9JR0UpKVxucGF0ZXJuYWxfZW52aXJvbm1lbnQgPC0gcm5vcm0obiwgc2Q9c3FydChWX0UrMipDT1ZfQV9JR0UpKVxuYGBgIn0= -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubWF0ZXJuYWxfZ2VuZXRpY19udXJ0dXJlIDwtIHJub3JtKG4sIHNkPXNxcnQoMipWX0lHRSkpICMgbW90aGVyJ3MgcGFyZW50cycgKGNvbWJpbmVkKSBpbmRpcmVjdCBlZmZlY3RzIChvbiB0aGUgbW90aGVyJ3MgcGhlbm90eXBlKVxucGF0ZXJuYWxfZ2VuZXRpY19udXJ0dXJlIDwtIHJub3JtKG4sIHNkPXNxcnQoMipWX0lHRSkpICMgZmF0aGVyJ3MgcGFyZW50cycgKGNvbWJpbmVkKSBpbmRpcmVjdCBlZmZlY3RzIChvbiB0aGUgbW90aGVyJ3MgcGhlbm90eXBlKVxubWF0ZXJuYWxfZW52aXJvbm1lbnQgPC0gcm5vcm0obiwgc2Q9c3FydChWX0UrQ09WX0FfSUdFKSlcbnBhdGVybmFsX2Vudmlyb25tZW50IDwtIHJub3JtKG4sIHNkPXNxcnQoVl9FK0NPVl9BX0lHRSkpXG5gYGAifQ== -->
 <pre class="r"><code>maternal_genetic_nurture &lt;- rnorm(n, sd=sqrt(2*V_IGE)) # mother&#39;s parents&#39; (combined) indirect effects (on the mother&#39;s phenotype)
 paternal_genetic_nurture &lt;- rnorm(n, sd=sqrt(2*V_IGE)) # father&#39;s parents&#39; (combined) indirect effects (on the mother&#39;s phenotype)
-maternal_environment &lt;- rnorm(n, sd=sqrt(V_E+2*COV_A_IGE))
-paternal_environment &lt;- rnorm(n, sd=sqrt(V_E+2*COV_A_IGE))</code></pre>
+maternal_environment &lt;- rnorm(n, sd=sqrt(V_E+COV_A_IGE))
+paternal_environment &lt;- rnorm(n, sd=sqrt(V_E+COV_A_IGE))</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -2009,14 +2046,14 @@ paternal_phenotype &lt;- paternal_genetic_direct + paternal_genetic_nurture + pa
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudmFyKG1hdGVybmFsX3BoZW5vdHlwZSlcbmBgYCJ9 -->
 <pre class="r"><code>var(maternal_phenotype)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuOTk2NDA2MVxuIn0= -->
-<pre><code>[1] 0.9964061</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDEuMDA1NzQ0XG4ifQ== -->
+<pre><code>[1] 1.005744</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudmFyKHBhdGVybmFsX3BoZW5vdHlwZSlcbmBgYCJ9 -->
 <pre class="r"><code>var(paternal_phenotype)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuOTk3Njc5OFxuIn0= -->
-<pre><code>[1] 0.9976798</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDEuMDAzMjA4XG4ifQ== -->
+<pre><code>[1] 1.003208</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -2032,12 +2069,12 @@ paternal_prs &lt;- paternal_genetic$PRS_T + paternal_genetic$PRS_NT</code></pre>
 <p>Create offspring components</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub2Zmc3ByaW5nX2dlbmV0aWNfZGlyZWN0IDwtIG1hdGVybmFsX2dlbmV0aWMkQV9UICsgcGF0ZXJuYWxfZ2VuZXRpYyRBX1QgICMgdHJhbnNtaXR0ZWQgZWZmZWN0c1xub2Zmc3ByaW5nX2dlbmV0aWNfbnVydHVyZSA8LSBtYXRlcm5hbF9nZW5ldGljJGluZGlyZWN0ICsgcGF0ZXJuYWxfZ2VuZXRpYyRpbmRpcmVjdCAjIGluZGlyZWN0IGdlbmV0aWMgZWZmZWN0cyBvZiBwYXJlbnRzIG9uIG9mZnNwcmluZ1xub2Zmc3ByaW5nX2Vudmlyb25tZW50IDwtIHJub3JtKG49biwgc2Q9c3FydChWX0UpKVxub2Zmc3ByaW5nX3BoZW5vdHlwZSA8LSBvZmZzcHJpbmdfZ2VuZXRpY19kaXJlY3QgKyBvZmZzcHJpbmdfZ2VuZXRpY19udXJ0dXJlICsgb2Zmc3ByaW5nX2Vudmlyb25tZW50XG5vZmZzcHJpbmdfcHJzIDwtIChtYXRlcm5hbF9nZW5ldGljJFBSU19UICsgcGF0ZXJuYWxfZ2VuZXRpYyRQUlNfVClcbmBgYCJ9 -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub2Zmc3ByaW5nX2dlbmV0aWNfZGlyZWN0IDwtIG1hdGVybmFsX2dlbmV0aWMkQV9UICsgcGF0ZXJuYWxfZ2VuZXRpYyRBX1QgICMgdHJhbnNtaXR0ZWQgZWZmZWN0c1xub2Zmc3ByaW5nX2dlbmV0aWNfbnVydHVyZSA8LSBtYXRlcm5hbF9nZW5ldGljJGluZGlyZWN0ICsgcGF0ZXJuYWxfZ2VuZXRpYyRpbmRpcmVjdCAjIGluZGlyZWN0IGdlbmV0aWMgZWZmZWN0cyBvZiBwYXJlbnRzIG9uIG9mZnNwcmluZ1xub2Zmc3ByaW5nX2Vudmlyb25tZW50IDwtIHJub3JtKG49biwgc2Q9c3FydChWX0UpKVxub2Zmc3ByaW5nX3BoZW5vdHlwZSA8LSBvZmZzcHJpbmdfZ2VuZXRpY19kaXJlY3QgKyBvZmZzcHJpbmdfZ2VuZXRpY19udXJ0dXJlICsgb2Zmc3ByaW5nX2Vudmlyb25tZW50XG5vZmZzcHJpbmdfcHJzIDwtIChtYXRlcm5hbF9nZW5ldGljJFBSU19UICsgcGF0ZXJuYWxfZ2VuZXRpYyRQUlNfVCkgIyBQUlMgZnJvbSBwYXJlbnRhbCB0cmFuc21pdHRlZCBQUlMgdmFsdWVzXG5gYGAifQ== -->
 <pre class="r"><code>offspring_genetic_direct &lt;- maternal_genetic$A_T + paternal_genetic$A_T  # transmitted effects
 offspring_genetic_nurture &lt;- maternal_genetic$indirect + paternal_genetic$indirect # indirect genetic effects of parents on offspring
 offspring_environment &lt;- rnorm(n=n, sd=sqrt(V_E))
 offspring_phenotype &lt;- offspring_genetic_direct + offspring_genetic_nurture + offspring_environment
-offspring_prs &lt;- (maternal_genetic$PRS_T + paternal_genetic$PRS_T)</code></pre>
+offspring_prs &lt;- (maternal_genetic$PRS_T + paternal_genetic$PRS_T) # PRS from parental transmitted PRS values</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -2046,39 +2083,39 @@ offspring_prs &lt;- (maternal_genetic$PRS_T + paternal_genetic$PRS_T)</code></pr
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudmFyKG9mZnNwcmluZ19nZW5ldGljX2RpcmVjdClcbmBgYCJ9 -->
 <pre class="r"><code>var(offspring_genetic_direct)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuNDk3NzI1OVxuIn0= -->
-<pre><code>[1] 0.4977259</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuNDk5NzkzOFxuIn0= -->
+<pre><code>[1] 0.4997938</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudmFyKG9mZnNwcmluZ19nZW5ldGljX251cnR1cmUpXG5gYGAifQ== -->
 <pre class="r"><code>var(offspring_genetic_nurture)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMTAwMzc1M1xuIn0= -->
-<pre><code>[1] 0.1003753</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMTAwMDU3N1xuIn0= -->
+<pre><code>[1] 0.1000577</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudmFyKG9mZnNwcmluZ19lbnZpcm9ubWVudClcbmBgYCJ9 -->
 <pre class="r"><code>var(offspring_environment)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMzY3MDY2XG4ifQ== -->
-<pre><code>[1] 0.367066</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMzUyODYxN1xuIn0= -->
+<pre><code>[1] 0.3528617</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudmFyKG9mZnNwcmluZ19waGVub3R5cGUpXG5gYGAifQ== -->
 <pre class="r"><code>var(offspring_phenotype)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuOTgwNTIxNFxuIn0= -->
-<pre><code>[1] 0.9805214</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDEuMDAyMTY1XG4ifQ== -->
+<pre><code>[1] 1.002165</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudmFyKG9mZnNwcmluZ19wcnMpXG5gYGAifQ== -->
 <pre class="r"><code>var(offspring_prs)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDI0OTQ0NDRcbiJ9 -->
-<pre><code>[1] 0.02494444</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIDAuMDI1MDQ1ODhcbiJ9 -->
+<pre><code>[1] 0.02504588</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiQ29ycmVsYXRlZCBkaXJlY3QtaW5kaXJlY3QgZ2VuZXRpYyBlZmZlY3RzIHdpdGggdHJhbnNtaXR0ZWQvbm9uLXRyYW5zbWl0dGVkIFBSUyBzaW11bGF0aW9ucyIKYXV0aG9yOiAiTWFyayBBZGFtcyIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKYGBge3J9CmxpYnJhcnkobXZ0bm9ybSkKYGBgCgojIE1vZGVsCgpUaGUgdmFyaWFuY2UgY29tcG9uZW50IG1vZGVsIHdlIGFyZSBzaW11bGF0aW5nIGlzOgoKXFsKVl9cbWF0aHJte1B9ID0gVl9cbWF0aHJte0F9ICsgMlZfXG1hdGhybXtJR0V9ICsgVl9cbWF0aHJte0V9ClxdCgp3aGVyZQoKLSAkVl9cbWF0aHJte1B9JCBpcyB0aGUgcGhlbm90eXBpYyB2YXJpYW5jZQotICRWX1xtYXRocm17QX0kIGlzIHRoZSBkaXJlY3QgZ2VuZXRpYyBlZmZlY3QgdmFyaWFuY2UgKGFkZGl0aXZlIGdlbmV0aWMgdmFyaWFuY2UpCi0gJFZfXG1hdGhybXtJR0V9JCBpcyB0aGUgaW5kaXJlY3QgZ2VuZXRpYyBlZmZlY3QgdmFyaWFuY2UgKGVmZmVjdCBvZiBwYXJlbnRzJyBnZW5lcyB2aWEgdGhlIGVudmlyb25tZW50IG9uIHRoZWlyIG9mZnNwcmluZykuIFRoZSBjb250cmlidXRpb24gb2YgdGhlIHZhcmlhbmNlIGlzIGRvdWJsZWQgYmVjYXVzZSB0aGVyZSBpcyBhbiBlZmZlY3QgZnJvbSBlYWNoIHBhcmVudAotICRWX1xtYXRocm17RX0kIGlzIHRoZSBlbnZpcm9ubWVudCB2YXJpYW5jZQoKYW5kIHdoZXJlICRWX1xtYXRocm17QX0kIGFuZCAkVl9cbWF0aHJte0lHRX0kIGFyZSBjb3JyZWxhdGVkIAoKXFsKXFNpZ21hID0gXGJlZ2lue2JtYXRyaXh9IFZfXG1hdGhybXtBfSAmIENPVl9cbWF0aHJte0EsSUdFfSBcXAogICAgICAgICAgICAgICAgICBDT1ZfXG1hdGhybXtBLElHRX0gJiBWX1xtYXRocm17SUdFfVxlbmR7Ym1hdHJpeH0KXF0KICAgICAgIAojIFBhcmFtZXRlcnMKCkRlZmluZSB0aGUgYmFzaWMgcGFyYW1ldGVycyBmb3IgdGhlIHNpbXVsYXRpb24uIAoKYGBge3J9ClZfUCA9IDEgIyBwaGVub3R5cGljIHZhcmlhbmNlCmgyID0gMC41ICMgaGVyaXRhYmlsaXR5IChkaXJlY3QgZ2VuZXRpYyBlZmZlY3QgcHJvcG9ydGlvbikgKFZfQS9WX1ApCmlnZTIgPSAwLjEgIyBpbmRpcmVjdCBnZW5ldGljIGVmZmVjdCBwcm9wb3J0aW9uICgyKlZfSUdFL1ZfUCkKczIgPSAwLjA1ICMgcHJvcG9ydGlvbiBvZiBWX0EgY2FwdHVyZWQgYnkgcG9seWdlbmljIHNjb3JlcwpyX2FfaWdlID0gMC4xICMgZ2VuZXRpYyBjb3JyZWxhdGlvbiBiZXR3ZWVuIGRpcmVjdCBhbmQgaW5kaXJlY3QgZWZmZWN0Cm4gPC0gMTAwMDAwICMgc2FtcGxlIHNpemUgKG51bWJlciBvZiB0cmlvcykKYGBgCgpUaGUgcmVtYWluZGVyIG9mIHRoZSBwYXJhbWV0ZXJzIGNhbiBiZSBkZWZpbmVkIGZyb20gdGhlc2UuCgpWYXJpYW5jZSBjb21wb25lbnRzOgoKYGBge3J9ClZfQSA8LSBoMipWX1AgIyBhZGRpdGl2ZSBnZW5ldGljIHZhcmlhbmNlClZfVCA8LSBWX0EvMiAjIHRyYW5zbWl0dGVkIGdlbmV0aWMgdmFyaWFuY2UKVl9OVCA8LSBWX0EvMiAjIG5vbi10cmFuc21pdHRlZCBnZW5ldGljIHZhcmlhbmNlClZfSUdFIDwtIGlnZTIqVl9QLzIgIyBpbmRpcmVjdCBnZW5ldGljIHZhcmlhbmNlClZfUFJTIDwtIHMyKlZfQSAjIFBSUyB2YXJpYW5jZQpgYGAKCndoaWNoIGdpdmVzIHVzCgpgYGB7cn0KVl9BClZfVApWX05UCjIqVl9JR0UKVl9QUlMKYGBgCgpXZSBhbHNvIG5lZWQgdGhlIGNvdmFyaWFuY2UgYmV0d2VlbiAkVl9cbWF0aHJte0F9JCBhbmQgJFZfXG1hdGhybXtJR0V9JCwgJENPVl9cbWF0aHJte0EsSUdFfSQuIFNpbmNlIHRoZSBjb3JyZWxhdGlvbiBpcyAkcl9cbWF0aHJte2EsaWdlfSA9IENPVl9cbWF0aHJte0EsSUdFfSAvIFxzcXJ0e1ZfXG1hdGhybXtBfSBcdGltZXMgVl9cbWF0aHJte0lHRX19JCwgdGhlbiAkQ09WX1xtYXRocm17QSxJR0V9ID0gcl9cbWF0aHJte2EsaWdlfSBcdGltZXMgXHNxcnR7Vl9cbWF0aHJte0F9XHRpbWVzIFZfXG1hdGhybXtJR0V9fSQKCmBgYHtyfQpDT1ZfQV9JR0UgPSByX2FfaWdlICogc3FydChWX0EgKiBWX0lHRSkKQ09WX0FfSUdFCmBgYAoKVGhlIHRyYW5zbWl0dGVkIGFuZCBub24tdHJhbnNtaXR0ZWQgcG9ydGlvbnMgb2YgdGhlIGRpcmVjdCBnZW5ldGljIGVmZmVjdCB3aWxsIGhhdmUgaGFsZiB0aGUgY292YXJpYW5jZSB3aXRoIHRoZSBpbmRpcmVjdCBnZW5ldGljIGVmZmVjdApgYGB7cn0KQ09WX1RfSUdFIDwtIENPVl9BX0lHRS8yCkNPVl9OVF9JR0UgPC0gQ09WX0FfSUdFLzIKYGBgCgpQUlMgaGFzIGEgY29ycmVsYXRpb24gb2YgYHIgczJgIHdpdGggdGhlIGFkZGl0aXZlIGdlbmV0aWMgdmFyaWFuY2UgYW5kIGhhcyBhIHRyYW5zbWl0dGVkIGFuZCBub24tdHJhbnNtaXR0ZWQgY29tcG9uZW50IGFzIHdlbGwuCgpgYGB7cn0KVl9UX1BSUyA8LSBWX1BSUy8yClZfTlRfUFJTIDwtIFZfUFJTLzIKYGBgCgpUaGUgY292YXJpYW5jZSBvZiB0aGUgUFJTIHdpdGggdGhlIGluZGlyZWN0IGdlbmV0aWMgZWZmZWN0OgoKYGBge3J9CkNPVl9UX0lHRSA8LSBDT1ZfQV9UICogQ09WX0FfSUdFCkNPVl9OVF9JR0UgPC0gQ09WX0FfTlQgKiBDT1ZfQV9JR0UKQ09WX1RfUFJTX0lHRSA8LSBDT1ZfQV9QUlMgKiBDT1ZfVF9JR0UKQ09WX05UX1BSU19JR0UgPC0gQ09WX0FfUFJTICogQ09WX05UX0lHRQpDT1ZfVF9JR0UKQ09WX05UX0lHRQpDT1ZfVF9QUlNfSUdFCkNPVl9OVF9QUlNfSUdFCmBgYAoKVGhlIGdlbmV0aWMgZWZmZWN0cyB2YXJpYW5jZS1jb3ZhcmlhbmNlIG1hdHJpeCBpcyBhIDQtYnktNCBtYXRyaXguIFRyYW5zbWl0dGVkIGFuZCBub24tdHJhbnNtaXR0ZWQgZWZmZWN0cyB3aWxsIGJlIHVuY29ycmVsYXRlZCB3aXRoIGVhY2ggb3RoZXIuICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgCmBgYHtyfQpnZW5ldGljX2VmZmVjdF9uYW1lcyA8LSAKICAgICAgICAgICAgICAgICBjKCdBX1QnLCAgICAgICAgICdQUlNfVCcsICAgICdBX05UJywgICAgICAgICdQUlNfTlQnLCAgICAgICAnaW5kaXJlY3QnKQpTaWdtYSA9IG1hdHJpeChjKCAgICBWX1QsICAgICAgICAgVl9UX1BSUywgICAgICAgICAwLCAgICAgICAgICAgICAgIDAsICAgICAgIENPVl9UX0lHRSwKICAgICAgICAgICAgICAgICBWX1RfUFJTLCAgICAgICAgIFZfVF9QUlMsICAgICAgICAgMCwgICAgICAgICAgICAgICAwLCAgIENPVl9UX1BSU19JR0UsCiAgICAgICAgICAgICAgICAgICAgICAgMCwgICAgICAgICAgICAgICAwLCAgICAgICBWX05ULCAgICAgICBWX05UX1BSUywgICAgICBDT1ZfTlRfSUdFLAogICAgICAgICAgICAgICAgICAgICAgIDAsICAgICAgICAgICAgICAgMCwgICBWX05UX1BSUywgICAgICAgVl9OVF9QUlMsICBDT1ZfTlRfUFJTX0lHRSwKICAgICAgICAgICAgICAgICBDT1ZfVF9JR0UsIENPVl9UX1BSU19JR0UsIENPVl9OVF9JR0UsIENPVl9OVF9QUlNfSUdFLCAgICAgICAgICAgVl9JR0UpLAogICAgICAgICAgICAgbnJvdz01LCBuY29sPTUsIGJ5cm93PVQsIGRpbW5hbWVzPWxpc3QoZ2VuZXRpY19lZmZlY3RfbmFtZXMsIGdlbmV0aWNfZWZmZWN0X25hbWVzKSkKU2lnbWEKYGBgCgpXaGVuIGRldGVybWluaW5nIHRoZSByZXNpZHVhbCB2YXJpYW5jZSBmb3IgdGhlIGVudmlyb25tZW50IGVmZmVjdCwgdGhlIGluY3JlYXNlIGluIHZhcmlhbmNlIGZyb20gdGhlIGNvdmFyaWFuY2UgYmV0d2VlbiB0aGUgZGlyZWN0IGFuZCBpbmRpcmVjdCBlZmZlY3RzIGFsc28gbmVlZHMgdG8gYmUgc3VidHJhY3RlZC4gVGhlIHZhcmlhbmNlIG9mIHRoZSBzdW0gb2YgdHdvIHZhcmlhYmxlcyBpcyAkXG1hdGhybXt2YXJ9KFgrWSkgPSBcbWF0aHJte3Zhcn0oWCkgKyBcbWF0aHJte3Zhcn0oWSkgLSAyXG1hdGhybXtjb3Z9KFgsIFkpJC4gV2hpbGUgdGhlcmUgYXJlIHR3byAkVl9cbWF0aHJte0lHRX0kIGNvbXBvbmVudHMgY29udHJpYnV0aW5nIChvbmUgZnJvbSBlYWNoIHBhcmVudCkgd2Ugb25seSBuZWVkIHRvIHJlbW92ZSAkMkNPVl9cbWF0aHJte0EsSUdFfSQgYmVjYXVzZSB0aGUgY292YXJpYW5jZSB3ZSBkZWZpbmVkIGFib3ZlIGlzIHRoYXQgYmV0d2VlbiBhIHRhcmdldCdzIGRpcmVjdCBnZW5ldGljIGVmZmVjdCBvbiB0aGVtc2VsdmVzIGFuZCB0aGUgaW5kaXJlY3QgZWZmZWN0IG9uIHRoZSB0YXJnZXQncyBvZmZzcHJpbmcgYnV0IHRoZSBjb250cmlidXRpb24gb2YgdGhpcyBjb3ZhcmlhbmNlIHRvIHRoZSBwaGVub3R5cGljIHZhcmlhbmNlIGlzIGJldHdlZW4gYSB0YXJnZXQncyBkaXJlY3QgZ2VuZXRpYyBlZmZlY3Qgb24gdGhlIHRhcmdldCdzIHBoZW5vdHlwZSBhbmQgdGhlIHBhcmVudHMnIChzdW1tZWQpIGluZGlyZWN0IGVmZmVjdCBvbiB0aGUgdGFyZ2V0J3MgcGhlbm90eXBlCgpgYGB7cn0KVl9FID0gVl9QIC0gVl9BIC0gMipWX0lHRSAtIDIqQ09WX0FfSUdFClZfRQpgYGAKCiMgU2ltdWxhdGlvbgoKRm9yIHNpbXVsYXRpbmcgZGF0YSBmcm9tIHRoZSBjb3ZhcmlhbmNlIG1hdHJpeCwgdGhlIGZ1bmN0aW9uIGBybXZub3JtYCBpcyB0aGUgbXVsdGl2YXJpYXRlIGVxdWl2YWxlbnQgb2YgYHJub3JtYCwgcGFyYW1ldGVyaXNlZCBieSBhIHZlY3RvciBvZiBtZWFucyBhbmQgYSBjb3ZhcmlhbmNlIG1hdHJpeCBgc2lnbWFgLiBTaW11bGF0ZSBnZW5ldGljIGVmZmVjdHMgZm9yIG1vdGhlcnMgYW5kIGZhdGhlcnMKCmBgYHtyfQptYXRlcm5hbF9nZW5ldGljIDwtIGRhdGEuZnJhbWUocm12bm9ybShuLCBzaWdtYT1TaWdtYSkpCnBhdGVybmFsX2dlbmV0aWMgPC0gZGF0YS5mcmFtZShybXZub3JtKG4sIHNpZ21hPVNpZ21hKSkKbmFtZXMobWF0ZXJuYWxfZ2VuZXRpYykgPC0gbmFtZXMocGF0ZXJuYWxfZ2VuZXRpYykgPC0gZ2VuZXRpY19lZmZlY3RfbmFtZXMKYGBgCgpUaGlzIHlpZWxkcyBtYXRyaWNlcyBvZiBzaXplICRuIFx0aW1lcyA1JCwgc28gdGhlIGZpcnN0IGFuZCBzZWNvbmQgY29sdW1ucyBhcmUgdGhlIHRyYW5zbWl0dGVkIGdlbmV0aWMgYW5kIFBSUyBlZmZlY3RzLCB0aGUgdGhpcmQgYW5kIGZvdXJ0aCBjb2x1bW5zIGFyZSB0aGUgbm9udHJhbnNtaXR0ZWQgZWZmZWN0cywgYW5kIHRoZSBmaWZ0aCBjb2x1bW4gaXMgdGhlIGluZGlyZWN0IGVmZmVjdAoKYGBge3J9CmhlYWQobWF0ZXJuYWxfZ2VuZXRpYykKYGBgCgpOb3RlIHRoYXQgdGhlIGluZGlyZWN0IGVmZmVjdHMgaGVyZSBhcmUgdGhlIGdlbmV0aWMgbnVydHVyZSBlZmZlY3RzIG9uIHRoZSBwaGVub3R5cGUgb2YgdGhlIG9mZnNwcmluZy4KClNpbXVsYXRlIHRoZSBvdGhlciBjb21wb25lbnRzIG9mIHRoZSBwYXJlbnRhbCBwaGVub3R5cGVzLiBTaW5jZSB3ZSBhcmUgc2ltdWxhdGluZyB0aGUgZ3JhbmRwYXJlbnRhbCBpbmRpcmVjdCBlZmZlY3Qgc2VwYXJhdGVseSBmcm9tIHRoZSBwYXJlbnRhbCBkaXJlY3QgZWZmZWN0cywgd2UgbmVlZCB0byBtYWtlIHVwIHRoZSBtaXNzaW5nIHZhcmlhbmNlIGJ5IGFkZGluZyB0aGVpciBjb3ZhcmlhbmNlIHRlcm0gaW50byB0aGUgcmVzaWR1YWwgKGVudmlyb25tZW50YWwgKQoKYGBge3J9Cm1hdGVybmFsX2dlbmV0aWNfbnVydHVyZSA8LSBybm9ybShuLCBzZD1zcXJ0KDIqVl9JR0UpKSAjIG1vdGhlcidzIHBhcmVudHMnIChjb21iaW5lZCkgaW5kaXJlY3QgZWZmZWN0cyAob24gdGhlIG1vdGhlcidzIHBoZW5vdHlwZSkKcGF0ZXJuYWxfZ2VuZXRpY19udXJ0dXJlIDwtIHJub3JtKG4sIHNkPXNxcnQoMipWX0lHRSkpICMgZmF0aGVyJ3MgcGFyZW50cycgKGNvbWJpbmVkKSBpbmRpcmVjdCBlZmZlY3RzIChvbiB0aGUgbW90aGVyJ3MgcGhlbm90eXBlKQptYXRlcm5hbF9lbnZpcm9ubWVudCA8LSBybm9ybShuLCBzZD1zcXJ0KFZfRSsyKkNPVl9BX0lHRSkpCnBhdGVybmFsX2Vudmlyb25tZW50IDwtIHJub3JtKG4sIHNkPXNxcnQoVl9FKzIqQ09WX0FfSUdFKSkKYGBgCgpBZGQgdXAgY29tcG9uZW50cyB0byBjcmVhdGUgcGFyZW50YWwgcGhlbm90eXBlcwoKYGBge3J9Cm1hdGVybmFsX2dlbmV0aWNfZGlyZWN0IDwtIG1hdGVybmFsX2dlbmV0aWMkQV9UICsgbWF0ZXJuYWxfZ2VuZXRpYyRBX05UCm1hdGVybmFsX3BoZW5vdHlwZSA8LSBtYXRlcm5hbF9nZW5ldGljX2RpcmVjdCArIG1hdGVybmFsX2dlbmV0aWNfbnVydHVyZSArIG1hdGVybmFsX2Vudmlyb25tZW50CnBhdGVybmFsX2dlbmV0aWNfZGlyZWN0IDwtIHBhdGVybmFsX2dlbmV0aWMkQV9UICsgcGF0ZXJuYWxfZ2VuZXRpYyRBX05UCnBhdGVybmFsX3BoZW5vdHlwZSA8LSBwYXRlcm5hbF9nZW5ldGljX2RpcmVjdCArIHBhdGVybmFsX2dlbmV0aWNfbnVydHVyZSArIHBhdGVybmFsX2Vudmlyb25tZW50CmBgYAoKQ2hlY2sgdGhhdCB0aGUgdmFyaWFuY2VzIG9mIHRoZSBwYXJlbnRhbCBwaGVub3RweWVzIGFyZSBhcyBleHBlY3RlZCAkXGFwcHJveCBWX1xtYXRocm17UH0kID0gYHIgVl9QYC4KYGBge3J9CnZhcihtYXRlcm5hbF9waGVub3R5cGUpCnZhcihwYXRlcm5hbF9waGVub3R5cGUpCmBgYAoKVGhlIHRyYW5zbWl0dGVkIGFuZCBub24tdHJhbnNtaXR0ZWQgUFJTIGFkZCB1cCB0byB0aGUgdG90YWwgcGFyZW50YWwgUFJTCmBgYHtyfQptYXRlcm5hbF9wcnMgPC0gbWF0ZXJuYWxfZ2VuZXRpYyRQUlNfVCArIG1hdGVybmFsX2dlbmV0aWMkUFJTX05UCnBhdGVybmFsX3BycyA8LSBwYXRlcm5hbF9nZW5ldGljJFBSU19UICsgcGF0ZXJuYWxfZ2VuZXRpYyRQUlNfTlQKYGBgCgpDcmVhdGUgb2Zmc3ByaW5nIGNvbXBvbmVudHMKCmBgYHtyfQpvZmZzcHJpbmdfZ2VuZXRpY19kaXJlY3QgPC0gbWF0ZXJuYWxfZ2VuZXRpYyRBX1QgKyBwYXRlcm5hbF9nZW5ldGljJEFfVCAgIyB0cmFuc21pdHRlZCBlZmZlY3RzCm9mZnNwcmluZ19nZW5ldGljX251cnR1cmUgPC0gbWF0ZXJuYWxfZ2VuZXRpYyRpbmRpcmVjdCArIHBhdGVybmFsX2dlbmV0aWMkaW5kaXJlY3QgIyBpbmRpcmVjdCBnZW5ldGljIGVmZmVjdHMgb2YgcGFyZW50cyBvbiBvZmZzcHJpbmcKb2Zmc3ByaW5nX2Vudmlyb25tZW50IDwtIHJub3JtKG49biwgc2Q9c3FydChWX0UpKQpvZmZzcHJpbmdfcGhlbm90eXBlIDwtIG9mZnNwcmluZ19nZW5ldGljX2RpcmVjdCArIG9mZnNwcmluZ19nZW5ldGljX251cnR1cmUgKyBvZmZzcHJpbmdfZW52aXJvbm1lbnQKb2Zmc3ByaW5nX3BycyA8LSAobWF0ZXJuYWxfZ2VuZXRpYyRQUlNfVCArIHBhdGVybmFsX2dlbmV0aWMkUFJTX1QpICMgUFJTIGZyb20gcGFyZW50YWwgdHJhbnNtaXR0ZWQgUFJTIHZhbHVlcwpgYGAKCgpgYGB7cn0KdmFyKG9mZnNwcmluZ19nZW5ldGljX2RpcmVjdCkKdmFyKG9mZnNwcmluZ19nZW5ldGljX251cnR1cmUpCnZhcihvZmZzcHJpbmdfZW52aXJvbm1lbnQpCnZhcihvZmZzcHJpbmdfcGhlbm90eXBlKQp2YXIob2Zmc3ByaW5nX3BycykKYGBgCgoKCg==</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiQ29ycmVsYXRlZCBkaXJlY3QtaW5kaXJlY3QgZ2VuZXRpYyBlZmZlY3RzIHdpdGggdHJhbnNtaXR0ZWQvbm9uLXRyYW5zbWl0dGVkIFBSUyBzaW11bGF0aW9ucyIKYXV0aG9yOiAiTWFyayBBZGFtcyIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKYGBge3J9CmxpYnJhcnkobXZ0bm9ybSkKYGBgCgojIE1vZGVsCgpUaGUgcGhlbm90eXBlICRQJCBpcyBkZWZpbmVkIGFzCgpcWwpcbWF0aHJte1B9ID0gXG1hdGhybXtBfSArIFxtYXRocm17SUdFfV9cbWF0aHJte21hdGVybmFsfSArIFxtYXRocm17SUdFfV9cbWF0aHJte3BhdGVybmFsfSArIFxtYXRocm17RX0gClxdCgp3aGVyZQoKLSAkXG1hdGhybXtBfSQgaXMgdGhlIGFkZGl0aXZlIGdlbmV0aWMgZWZmZWN0Ci0gJFxtYXRocm17SUdFfSQgaXMgdGhlIGluZGlyZWN0IGdlbmV0aWMgZWZmZWN0IGZyb20gdGhlIG1vdGhlciBhbmQgZmF0aGVyLiAkXG1hdGhybXtJR0V9X1xtYXRocm17bWF0ZXJuYWx9ICsgXG1hdGhybXtJR0V9X1xtYXRocm17cGF0ZXJuYWx9JCBjYW4gYmUgY29uc2lkZXJlZCB0aGUgZ2VuZXRpYyBudXJ0dXJlIGVmZmVjdC4KLSAkXG1hdGhybXtFfSBpcyB0aGUgaW5kaXZpZHVhbCBlbnZpcm9ubWVudCBlZmZlY3QKClRoZSB2YXJpYW5jZSBjb21wb25lbnQgbW9kZWwgd2UgYXJlIHNpbXVsYXRpbmcgaXMgdGhlcmVmb3JlOgoKXFsKVl9cbWF0aHJte1B9ID0gVl9cbWF0aHJte0F9ICsgMlZfXG1hdGhybXtJR0V9ICsgVl9cbWF0aHJte0V9ClxdCgp3aGVyZQoKLSAkVl9cbWF0aHJte1B9JCBpcyB0aGUgcGhlbm90eXBpYyB2YXJpYW5jZQotICRWX1xtYXRocm17QX0kIGlzIHRoZSBkaXJlY3QgZ2VuZXRpYyBlZmZlY3QgdmFyaWFuY2UgKGFkZGl0aXZlIGdlbmV0aWMgdmFyaWFuY2UpCi0gJFZfXG1hdGhybXtJR0V9JCBpcyB0aGUgaW5kaXJlY3QgZ2VuZXRpYyBlZmZlY3QgdmFyaWFuY2UgKGVmZmVjdCBvZiBwYXJlbnRzJyBnZW5lcyB2aWEgdGhlIGVudmlyb25tZW50IG9uIHRoZWlyIG9mZnNwcmluZykuIFRoZSBjb250cmlidXRpb24gb2YgdGhlIHZhcmlhbmNlIGlzIGRvdWJsZWQgYmVjYXVzZSB0aGVyZSBpcyBhbiBlZmZlY3QgZnJvbSBlYWNoIHBhcmVudAotICRWX1xtYXRocm17RX0kIGlzIHRoZSBlbnZpcm9ubWVudCB2YXJpYW5jZQoKYW5kIHdoZXJlICRWX1xtYXRocm17QX0kIGFuZCAkVl9cbWF0aHJte0lHRX0kIGFyZSBjb3JyZWxhdGVkIAoKXFsKXFNpZ21hID0gXGJlZ2lue2JtYXRyaXh9IFZfXG1hdGhybXtBfSAgICAgICAmIENPVl9cbWF0aHJte0EsSUdFfSBcXAogICAgICAgICAgICAgICAgICAgICAgICAgQ09WX1xtYXRocm17QSxJR0V9ICYgVl9cbWF0aHJte0lHRX0KICAgICAgICAgIFxlbmR7Ym1hdHJpeH0KXF0KCldlIGFsc28gc2ltdWxhdGUgYSBwb2x5Z2VuaWMgc2NvcmUgKFBSUykgdGhhdCBpcyBhbiBlc3RpbWF0ZSBvZiAkXG1hdGhybXtBfSQgYmFzZWQgb24gR1dBUyBkYXRhIGFuZCBkZWZpbmUgaXQgYmFzZWQgb24gdGhlIHByb3BvcnRpb24gb2YgJFZcbWF0aHJte0F9JCB0aGF0IGl0IGNhcHR1cmVzLiBBcyBhIHByb3h5IG9mICRcbWF0aHJte0lHRX0kLCB3ZSBzcGxpdCB0aGUgUFJTIGludG8gInRyYW5zbWl0dGVkIiAoJFxtYXRocm17VH0kKSBhbmQgIm5vbnRyYW5zbWl0dGVkIiAoJFxtYXRocm17TlR9JCkgc2NvcmVzLCBzbyB3ZSBkZWZpbmUgCgpcWwpcbWF0aHJte0F9ID0gXG1hdGhybXtUfSArIFxtYXRocm17TlR9ClxdCiAgICAgICAKIyBQYXJhbWV0ZXJzCgpEZWZpbmUgdGhlIGJhc2ljIHBhcmFtZXRlcnMgZm9yIHRoZSBzaW11bGF0aW9uLiAKCmBgYHtyfQpWX1AgPSAxICMgcGhlbm90eXBpYyB2YXJpYW5jZQpoMiA9IDAuNSAjIGhlcml0YWJpbGl0eSAoZGlyZWN0IGdlbmV0aWMgZWZmZWN0IHByb3BvcnRpb24pIChWX0EvVl9QKQppZ2UyID0gMC4xICMgaW5kaXJlY3QgZ2VuZXRpYyBlZmZlY3QgcHJvcG9ydGlvbiAoMipWX0lHRS9WX1ApCnMyID0gMC4wNSAjIHByb3BvcnRpb24gb2YgVl9BIGNhcHR1cmVkIGJ5IHBvbHlnZW5pYyBzY29yZXMKcl9hX2lnZSA9IDAuMyAjIGdlbmV0aWMgY29ycmVsYXRpb24gYmV0d2VlbiBkaXJlY3QgYW5kIGluZGlyZWN0IGVmZmVjdApuIDwtIDEwMDAwMCAjIHNhbXBsZSBzaXplIChudW1iZXIgb2YgdHJpb3MpCmBgYAoKVGhlIHJlbWFpbmRlciBvZiB0aGUgcGFyYW1ldGVycyBjYW4gYmUgZGVmaW5lZCBmcm9tIHRoZXNlLgoKVmFyaWFuY2UgY29tcG9uZW50czoKCmBgYHtyfQpWX0EgPC0gaDIqVl9QICMgYWRkaXRpdmUgZ2VuZXRpYyB2YXJpYW5jZQpWX1QgPC0gVl9BLzIgIyB0cmFuc21pdHRlZCBnZW5ldGljIHZhcmlhbmNlClZfTlQgPC0gVl9BLzIgIyBub24tdHJhbnNtaXR0ZWQgZ2VuZXRpYyB2YXJpYW5jZQpWX0lHRSA8LSBpZ2UyKlZfUC8yICMgaW5kaXJlY3QgZ2VuZXRpYyB2YXJpYW5jZQpWX1BSUyA8LSBzMipWX0EgIyBQUlMgdmFyaWFuY2UKYGBgCgp3aGljaCBnaXZlcyB1cwoKYGBge3J9ClZfQQpWX1QKVl9OVAoyKlZfSUdFClZfUFJTCmBgYAoKV2UgYWxzbyBuZWVkIHRoZSBjb3ZhcmlhbmNlIGJldHdlZW4gJFZfXG1hdGhybXtBfSQgYW5kICRWX1xtYXRocm17SUdFfSQsICRDT1ZfXG1hdGhybXtBLElHRX0kLiBTaW5jZSB0aGUgY29ycmVsYXRpb24gaXMgCgpcWwpyX1xtYXRocm17YSxpZ2V9ID0gXGZyYWN7Q09WX1xtYXRocm17QSxJR0V9fXtcc3FydHtWX1xtYXRocm17QX0gXHRpbWVzIFZfXG1hdGhybXtJR0V9fX0KXF0KCnRoZW4KClxbCkNPVl9cbWF0aHJte0EsSUdFfSA9IHJfXG1hdGhybXthLGlnZX0gXHRpbWVzIFxzcXJ0e1ZfXG1hdGhybXtBfVx0aW1lcyBWX1xtYXRocm17SUdFfX0KXF0KCmBgYHtyfQpDT1ZfQV9JR0UgPSByX2FfaWdlICogc3FydChWX0EgKiBWX0lHRSkKQ09WX0FfSUdFCmBgYAoKVGhlIHRyYW5zbWl0dGVkIGFuZCBub24tdHJhbnNtaXR0ZWQgcG9ydGlvbnMgb2YgdGhlIGRpcmVjdCBnZW5ldGljIGVmZmVjdCB3aWxsIGhhdmUgaGFsZiB0aGUgY292YXJpYW5jZSB3aXRoIHRoZSBpbmRpcmVjdCBnZW5ldGljIGVmZmVjdApgYGB7cn0KQ09WX1RfSUdFIDwtIENPVl9BX0lHRS8yCkNPVl9OVF9JR0UgPC0gQ09WX0FfSUdFLzIKYGBgCgpQUlMgaGFzIGEgY29ycmVsYXRpb24gb2YgYHIgczJgIHdpdGggdGhlIGFkZGl0aXZlIGdlbmV0aWMgdmFyaWFuY2UgYW5kIGhhcyBhIHRyYW5zbWl0dGVkIGFuZCBub24tdHJhbnNtaXR0ZWQgY29tcG9uZW50IGFzIHdlbGwuCgpgYGB7cn0KVl9UX1BSUyA8LSBWX1BSUy8yClZfTlRfUFJTIDwtIFZfUFJTLzIKYGBgCgpUaGUgY292YXJpYW5jZSBvZiB0aGUgdHJhbnNtaXR0ZWQgYW5kIG5vbi10cmFuc21pdHRlZCBQUlMgd2l0aCB0aGUgdG90YWwgZ2VuZXRpYyBlZmZlY3RzOgoKXFsKcyA9IFxmcmFje0NPVl9cbWF0aHJte1QsUFJTX1R9fXtcc3FydHtWX1RWX1xtYXRocm17UFJTX1R9fX0KXF0KUmVhcnJhbmdlOgoKXFsKQ09WX1xtYXRocm17VCxQUlNfVH0gPSBzIFxzcXJ0e1ZfVFZfXG1hdGhybXtQUlNfVH19ClxdCgpTdWJzdGl0dXRlIHZhbHVlIG9mICRzXjIgPSBWX1xtYXRocm17UFJTX1R9IC8gVl9UJAoKXFsKXGJlZ2lue2FsaWduZWR9CkNPVl9cbWF0aHJte1QsUFJTX1R9ICYgPSBcc3FydHtcZnJhY3tWX1xtYXRocm17UFJTX1R9fXtWX1R9fVxzcXJ0e1ZfVFZfXG1hdGhybXtQUlNfVH19IFxcCiYgPSBcc3FydHtWX1xtYXRocm17UFJTX1R9fSBcc3FydHtWX1xtYXRocm17UFJTX1R9fSBcc3FydHtcZnJhY3sxfXtWX1R9fVxzcXJ0e1ZfVH0gXFwKJiA9IFZfXG1hdGhybXtQUlNfVH0KXGVuZHthbGlnbmVkfQpcXQoKClRoZSBjb3ZhcmlhbmNlIG9mIHRoZSB0cmFuc21pdHRlZCBhbmQgbm9uLXRyYW5zbWl0dGVkIFBSUyB3aXRoIHRoZSBpbmRpcmVjdCBnZW5ldGljIGVmZmVjdDoKCmBgYHtyfQpDT1ZfVF9JR0UgPC0gQ09WX0FfVCAqIENPVl9BX0lHRQpDT1ZfTlRfSUdFIDwtIENPVl9BX05UICogQ09WX0FfSUdFCkNPVl9UX1BSU19JR0UgPC0gQ09WX0FfUFJTICogQ09WX1RfSUdFCkNPVl9OVF9QUlNfSUdFIDwtIENPVl9BX1BSUyAqIENPVl9OVF9JR0UKQ09WX1RfSUdFCkNPVl9OVF9JR0UKQ09WX1RfUFJTX0lHRQpDT1ZfTlRfUFJTX0lHRQpgYGAKClRoZSBnZW5ldGljIGVmZmVjdHMgdmFyaWFuY2UtY292YXJpYW5jZSBtYXRyaXggaXMgYSA0LWJ5LTQgbWF0cml4LiBUcmFuc21pdHRlZCBhbmQgbm9uLXRyYW5zbWl0dGVkIGVmZmVjdHMgd2lsbCBiZSB1bmNvcnJlbGF0ZWQgd2l0aCBlYWNoIG90aGVyLiAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgIApgYGB7cn0KZ2VuZXRpY19lZmZlY3RfbmFtZXMgPC0gCiAgICAgICAgICAgICAgICAgYygnQV9UJywgICAgICAgICAnUFJTX1QnLCAgICAnQV9OVCcsICAgICAgICAnUFJTX05UJywgICAgICAgJ2luZGlyZWN0JykKU2lnbWEgPSBtYXRyaXgoYyggICAgVl9ULCAgICAgICAgIFZfVF9QUlMsICAgICAgICAgMCwgICAgICAgICAgICAgICAwLCAgICAgICBDT1ZfVF9JR0UsCiAgICAgICAgICAgICAgICAgVl9UX1BSUywgICAgICAgICBWX1RfUFJTLCAgICAgICAgIDAsICAgICAgICAgICAgICAgMCwgICBDT1ZfVF9QUlNfSUdFLAogICAgICAgICAgICAgICAgICAgICAgIDAsICAgICAgICAgICAgICAgMCwgICAgICAgVl9OVCwgICAgICAgVl9OVF9QUlMsICAgICAgQ09WX05UX0lHRSwKICAgICAgICAgICAgICAgICAgICAgICAwLCAgICAgICAgICAgICAgIDAsICAgVl9OVF9QUlMsICAgICAgIFZfTlRfUFJTLCAgQ09WX05UX1BSU19JR0UsCiAgICAgICAgICAgICAgICAgQ09WX1RfSUdFLCBDT1ZfVF9QUlNfSUdFLCBDT1ZfTlRfSUdFLCBDT1ZfTlRfUFJTX0lHRSwgICAgICAgICAgIFZfSUdFKSwKICAgICAgICAgICAgIG5yb3c9NSwgbmNvbD01LCBieXJvdz1ULCBkaW1uYW1lcz1saXN0KGdlbmV0aWNfZWZmZWN0X25hbWVzLCBnZW5ldGljX2VmZmVjdF9uYW1lcykpClNpZ21hCmBgYAoKV2hlbiBkZXRlcm1pbmluZyB0aGUgcmVzaWR1YWwgdmFyaWFuY2UgZm9yIHRoZSBlbnZpcm9ubWVudCBlZmZlY3QsIHRoZSBpbmNyZWFzZSBpbiB2YXJpYW5jZSBmcm9tIHRoZSBjb3ZhcmlhbmNlIGJldHdlZW4gdGhlIGRpcmVjdCBhbmQgaW5kaXJlY3QgZWZmZWN0cyBhbHNvIG5lZWRzIHRvIGJlIHN1YnRyYWN0ZWQuIFRoZSB2YXJpYW5jZSBvZiB0aGUgc3VtIG9mIHR3byB2YXJpYWJsZXMgaXMgJFxtYXRocm17dmFyfShYK1kpID0gXG1hdGhybXt2YXJ9KFgpICsgXG1hdGhybXt2YXJ9KFkpIC0gMlxtYXRocm17Y292fShYLCBZKSQuIFdoaWxlIHRoZXJlIGFyZSB0d28gJFZfXG1hdGhybXtJR0V9JCBjb21wb25lbnRzIGNvbnRyaWJ1dGluZyAob25lIGZyb20gZWFjaCBwYXJlbnQpIHdlIG9ubHkgbmVlZCB0byByZW1vdmUgJENPVl9cbWF0aHJte0EsSUdFfSQgYmVjYXVzZSB0aGUgY292YXJpYW5jZSB3ZSBkZWZpbmVkIGFib3ZlIGlzIHRoYXQgYmV0d2VlbiBhIHRhcmdldCdzIGRpcmVjdCBnZW5ldGljIGVmZmVjdCBvbiB0aGVtc2VsdmVzIGFuZCB0aGUgaW5kaXJlY3QgZWZmZWN0IG9uIHRoZSB0YXJnZXQncyBvZmZzcHJpbmcgYnV0IHRoZSBjb250cmlidXRpb24gb2YgdGhpcyBjb3ZhcmlhbmNlIHRvIHRoZSBwaGVub3R5cGljIHZhcmlhbmNlIGlzIGJldHdlZW4gYSB0YXJnZXQncyBkaXJlY3QgZ2VuZXRpYyBlZmZlY3Qgb24gdGhlIHRhcmdldCdzIHBoZW5vdHlwZSBhbmQgdGhlIHBhcmVudHMnIChzdW1tZWQpIGluZGlyZWN0IGVmZmVjdCBvbiB0aGUgdGFyZ2V0J3MgcGhlbm90eXBlCgpgYGB7cn0KVl9FID0gVl9QIC0gVl9BIC0gMipWX0lHRSAtIENPVl9BX0lHRQpWX0UKYGBgCgojIFNpbXVsYXRpb24KCkZvciBzaW11bGF0aW5nIGRhdGEgZnJvbSB0aGUgY292YXJpYW5jZSBtYXRyaXgsIHRoZSBmdW5jdGlvbiBgcm12bm9ybWAgaXMgdGhlIG11bHRpdmFyaWF0ZSBlcXVpdmFsZW50IG9mIGBybm9ybWAsIHBhcmFtZXRlcmlzZWQgYnkgYSB2ZWN0b3Igb2YgbWVhbnMgYW5kIGEgY292YXJpYW5jZSBtYXRyaXggYHNpZ21hYC4gU2ltdWxhdGUgZ2VuZXRpYyBlZmZlY3RzIGZvciBtb3RoZXJzIGFuZCBmYXRoZXJzCgpgYGB7cn0KbWF0ZXJuYWxfZ2VuZXRpYyA8LSBkYXRhLmZyYW1lKHJtdm5vcm0obiwgc2lnbWE9U2lnbWEpKQpwYXRlcm5hbF9nZW5ldGljIDwtIGRhdGEuZnJhbWUocm12bm9ybShuLCBzaWdtYT1TaWdtYSkpCm5hbWVzKG1hdGVybmFsX2dlbmV0aWMpIDwtIG5hbWVzKHBhdGVybmFsX2dlbmV0aWMpIDwtIGdlbmV0aWNfZWZmZWN0X25hbWVzCmBgYAoKVGhpcyB5aWVsZHMgbWF0cmljZXMgb2Ygc2l6ZSAkbiBcdGltZXMgNSQsIHNvIHRoZSBmaXJzdCBhbmQgc2Vjb25kIGNvbHVtbnMgYXJlIHRoZSB0cmFuc21pdHRlZCBnZW5ldGljIGFuZCBQUlMgZWZmZWN0cywgdGhlIHRoaXJkIGFuZCBmb3VydGggY29sdW1ucyBhcmUgdGhlIG5vbnRyYW5zbWl0dGVkIGVmZmVjdHMsIGFuZCB0aGUgZmlmdGggY29sdW1uIGlzIHRoZSBpbmRpcmVjdCBlZmZlY3QKCmBgYHtyfQpoZWFkKG1hdGVybmFsX2dlbmV0aWMpCmBgYAoKTm90ZSB0aGF0IHRoZSBpbmRpcmVjdCBlZmZlY3RzIGhlcmUgYXJlIHRoZSBnZW5ldGljIG51cnR1cmUgZWZmZWN0cyBvbiB0aGUgcGhlbm90eXBlIG9mIHRoZSBvZmZzcHJpbmcuCgpTaW11bGF0ZSB0aGUgb3RoZXIgY29tcG9uZW50cyBvZiB0aGUgcGFyZW50YWwgcGhlbm90eXBlcy4gU2luY2Ugd2UgYXJlIHNpbXVsYXRpbmcgdGhlIGdyYW5kcGFyZW50YWwgaW5kaXJlY3QgZWZmZWN0IHNlcGFyYXRlbHkgZnJvbSB0aGUgcGFyZW50YWwgZGlyZWN0IGVmZmVjdHMsIHdlIG5lZWQgdG8gbWFrZSB1cCB0aGUgbWlzc2luZyB2YXJpYW5jZSBieSBhZGRpbmcgdGhlaXIgY292YXJpYW5jZSB0ZXJtIGludG8gdGhlIHJlc2lkdWFsIChlbnZpcm9ubWVudGFsICkKCmBgYHtyfQptYXRlcm5hbF9nZW5ldGljX251cnR1cmUgPC0gcm5vcm0obiwgc2Q9c3FydCgyKlZfSUdFKSkgIyBtb3RoZXIncyBwYXJlbnRzJyAoY29tYmluZWQpIGluZGlyZWN0IGVmZmVjdHMgKG9uIHRoZSBtb3RoZXIncyBwaGVub3R5cGUpCnBhdGVybmFsX2dlbmV0aWNfbnVydHVyZSA8LSBybm9ybShuLCBzZD1zcXJ0KDIqVl9JR0UpKSAjIGZhdGhlcidzIHBhcmVudHMnIChjb21iaW5lZCkgaW5kaXJlY3QgZWZmZWN0cyAob24gdGhlIG1vdGhlcidzIHBoZW5vdHlwZSkKbWF0ZXJuYWxfZW52aXJvbm1lbnQgPC0gcm5vcm0obiwgc2Q9c3FydChWX0UrQ09WX0FfSUdFKSkKcGF0ZXJuYWxfZW52aXJvbm1lbnQgPC0gcm5vcm0obiwgc2Q9c3FydChWX0UrQ09WX0FfSUdFKSkKYGBgCgpBZGQgdXAgY29tcG9uZW50cyB0byBjcmVhdGUgcGFyZW50YWwgcGhlbm90eXBlcwoKYGBge3J9Cm1hdGVybmFsX2dlbmV0aWNfZGlyZWN0IDwtIG1hdGVybmFsX2dlbmV0aWMkQV9UICsgbWF0ZXJuYWxfZ2VuZXRpYyRBX05UCm1hdGVybmFsX3BoZW5vdHlwZSA8LSBtYXRlcm5hbF9nZW5ldGljX2RpcmVjdCArIG1hdGVybmFsX2dlbmV0aWNfbnVydHVyZSArIG1hdGVybmFsX2Vudmlyb25tZW50CnBhdGVybmFsX2dlbmV0aWNfZGlyZWN0IDwtIHBhdGVybmFsX2dlbmV0aWMkQV9UICsgcGF0ZXJuYWxfZ2VuZXRpYyRBX05UCnBhdGVybmFsX3BoZW5vdHlwZSA8LSBwYXRlcm5hbF9nZW5ldGljX2RpcmVjdCArIHBhdGVybmFsX2dlbmV0aWNfbnVydHVyZSArIHBhdGVybmFsX2Vudmlyb25tZW50CmBgYAoKQ2hlY2sgdGhhdCB0aGUgdmFyaWFuY2VzIG9mIHRoZSBwYXJlbnRhbCBwaGVub3RweWVzIGFyZSBhcyBleHBlY3RlZCAkXGFwcHJveCBWX1xtYXRocm17UH0kID0gYHIgVl9QYC4KYGBge3J9CnZhcihtYXRlcm5hbF9waGVub3R5cGUpCnZhcihwYXRlcm5hbF9waGVub3R5cGUpCmBgYAoKVGhlIHRyYW5zbWl0dGVkIGFuZCBub24tdHJhbnNtaXR0ZWQgUFJTIGFkZCB1cCB0byB0aGUgdG90YWwgcGFyZW50YWwgUFJTCmBgYHtyfQptYXRlcm5hbF9wcnMgPC0gbWF0ZXJuYWxfZ2VuZXRpYyRQUlNfVCArIG1hdGVybmFsX2dlbmV0aWMkUFJTX05UCnBhdGVybmFsX3BycyA8LSBwYXRlcm5hbF9nZW5ldGljJFBSU19UICsgcGF0ZXJuYWxfZ2VuZXRpYyRQUlNfTlQKYGBgCgpDcmVhdGUgb2Zmc3ByaW5nIGNvbXBvbmVudHMKCmBgYHtyfQpvZmZzcHJpbmdfZ2VuZXRpY19kaXJlY3QgPC0gbWF0ZXJuYWxfZ2VuZXRpYyRBX1QgKyBwYXRlcm5hbF9nZW5ldGljJEFfVCAgIyB0cmFuc21pdHRlZCBlZmZlY3RzCm9mZnNwcmluZ19nZW5ldGljX251cnR1cmUgPC0gbWF0ZXJuYWxfZ2VuZXRpYyRpbmRpcmVjdCArIHBhdGVybmFsX2dlbmV0aWMkaW5kaXJlY3QgIyBpbmRpcmVjdCBnZW5ldGljIGVmZmVjdHMgb2YgcGFyZW50cyBvbiBvZmZzcHJpbmcKb2Zmc3ByaW5nX2Vudmlyb25tZW50IDwtIHJub3JtKG49biwgc2Q9c3FydChWX0UpKQpvZmZzcHJpbmdfcGhlbm90eXBlIDwtIG9mZnNwcmluZ19nZW5ldGljX2RpcmVjdCArIG9mZnNwcmluZ19nZW5ldGljX251cnR1cmUgKyBvZmZzcHJpbmdfZW52aXJvbm1lbnQKb2Zmc3ByaW5nX3BycyA8LSAobWF0ZXJuYWxfZ2VuZXRpYyRQUlNfVCArIHBhdGVybmFsX2dlbmV0aWMkUFJTX1QpICMgUFJTIGZyb20gcGFyZW50YWwgdHJhbnNtaXR0ZWQgUFJTIHZhbHVlcwpgYGAKCgpgYGB7cn0KdmFyKG9mZnNwcmluZ19nZW5ldGljX2RpcmVjdCkKdmFyKG9mZnNwcmluZ19nZW5ldGljX251cnR1cmUpCnZhcihvZmZzcHJpbmdfZW52aXJvbm1lbnQpCnZhcihvZmZzcHJpbmdfcGhlbm90eXBlKQp2YXIob2Zmc3ByaW5nX3BycykKYGBgCgo=</div>
 
 
 

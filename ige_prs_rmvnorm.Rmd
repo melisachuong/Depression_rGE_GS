@@ -10,7 +10,19 @@ library(mvtnorm)
 
 # Model
 
-The variance component model we are simulating is:
+The phenotype $P$ is defined as
+
+\[
+\mathrm{P} = \mathrm{A} + \mathrm{IGE}_\mathrm{maternal} + \mathrm{IGE}_\mathrm{paternal} + \mathrm{E} 
+\]
+
+where
+
+- $\mathrm{A}$ is the additive genetic effect
+- $\mathrm{IGE}$ is the indirect genetic effect from the mother and father. $\mathrm{IGE}_\mathrm{maternal} + \mathrm{IGE}_\mathrm{paternal}$ can be considered the genetic nurture effect.
+- $\mathrm{E} is the individual environment effect
+
+The variance component model we are simulating is therefore:
 
 \[
 V_\mathrm{P} = V_\mathrm{A} + 2V_\mathrm{IGE} + V_\mathrm{E}
@@ -26,8 +38,15 @@ where
 and where $V_\mathrm{A}$ and $V_\mathrm{IGE}$ are correlated 
 
 \[
-\Sigma = \begin{bmatrix} V_\mathrm{A} & COV_\mathrm{A,IGE} \\
-                  COV_\mathrm{A,IGE} & V_\mathrm{IGE}\end{bmatrix}
+\Sigma = \begin{bmatrix} V_\mathrm{A}       & COV_\mathrm{A,IGE} \\
+                         COV_\mathrm{A,IGE} & V_\mathrm{IGE}
+          \end{bmatrix}
+\]
+
+We also simulate a polygenic score (PRS) that is an estimate of $\mathrm{A}$ based on GWAS data and define it based on the proportion of $V\mathrm{A}$ that it captures. As a proxy of $\mathrm{IGE}$, we split the PRS into "transmitted" ($\mathrm{T}$) and "nontransmitted" ($\mathrm{NT}$) scores, so we define 
+
+\[
+\mathrm{A} = \mathrm{T} + \mathrm{NT}
 \]
        
 # Parameters
@@ -39,7 +58,7 @@ V_P = 1 # phenotypic variance
 h2 = 0.5 # heritability (direct genetic effect proportion) (V_A/V_P)
 ige2 = 0.1 # indirect genetic effect proportion (2*V_IGE/V_P)
 s2 = 0.05 # proportion of V_A captured by polygenic scores
-r_a_ige = 0.1 # genetic correlation between direct and indirect effect
+r_a_ige = 0.3 # genetic correlation between direct and indirect effect
 n <- 100000 # sample size (number of trios)
 ```
 
@@ -65,7 +84,17 @@ V_NT
 V_PRS
 ```
 
-We also need the covariance between $V_\mathrm{A}$ and $V_\mathrm{IGE}$, $COV_\mathrm{A,IGE}$. Since the correlation is $r_\mathrm{a,ige} = COV_\mathrm{A,IGE} / \sqrt{V_\mathrm{A} \times V_\mathrm{IGE}}$, then $COV_\mathrm{A,IGE} = r_\mathrm{a,ige} \times \sqrt{V_\mathrm{A}\times V_\mathrm{IGE}}$
+We also need the covariance between $V_\mathrm{A}$ and $V_\mathrm{IGE}$, $COV_\mathrm{A,IGE}$. Since the correlation is 
+
+\[
+r_\mathrm{a,ige} = \frac{COV_\mathrm{A,IGE}}{\sqrt{V_\mathrm{A} \times V_\mathrm{IGE}}}
+\]
+
+then
+
+\[
+COV_\mathrm{A,IGE} = r_\mathrm{a,ige} \times \sqrt{V_\mathrm{A}\times V_\mathrm{IGE}}
+\]
 
 ```{r}
 COV_A_IGE = r_a_ige * sqrt(V_A * V_IGE)
@@ -85,7 +114,29 @@ V_T_PRS <- V_PRS/2
 V_NT_PRS <- V_PRS/2
 ```
 
-The covariance of the PRS with the indirect genetic effect:
+The covariance of the transmitted and non-transmitted PRS with the total genetic effects:
+
+\[
+s = \frac{COV_\mathrm{T,PRS_T}}{\sqrt{V_TV_\mathrm{PRS_T}}}
+\]
+Rearrange:
+
+\[
+COV_\mathrm{T,PRS_T} = s \sqrt{V_TV_\mathrm{PRS_T}}
+\]
+
+Substitute value of $s^2 = V_\mathrm{PRS_T} / V_T$
+
+\[
+\begin{aligned}
+COV_\mathrm{T,PRS_T} & = \sqrt{\frac{V_\mathrm{PRS_T}}{V_T}}\sqrt{V_TV_\mathrm{PRS_T}} \\
+& = \sqrt{V_\mathrm{PRS_T}} \sqrt{V_\mathrm{PRS_T}} \sqrt{\frac{1}{V_T}}\sqrt{V_T} \\
+& = V_\mathrm{PRS_T}
+\end{aligned}
+\]
+
+
+The covariance of the transmitted and non-transmitted PRS with the indirect genetic effect:
 
 ```{r}
 COV_T_IGE <- COV_A_T * COV_A_IGE
@@ -112,10 +163,10 @@ Sigma = matrix(c(    V_T,         V_T_PRS,         0,               0,       COV
 Sigma
 ```
 
-When determining the residual variance for the environment effect, the increase in variance from the covariance between the direct and indirect effects also needs to be subtracted. The variance of the sum of two variables is $\mathrm{var}(X+Y) = \mathrm{var}(X) + \mathrm{var}(Y) - 2\mathrm{cov}(X, Y)$. While there are two $V_\mathrm{IGE}$ components contributing (one from each parent) we only need to remove $2COV_\mathrm{A,IGE}$ because the covariance we defined above is that between a target's direct genetic effect on themselves and the indirect effect on the target's offspring but the contribution of this covariance to the phenotypic variance is between a target's direct genetic effect on the target's phenotype and the parents' (summed) indirect effect on the target's phenotype
+When determining the residual variance for the environment effect, the increase in variance from the covariance between the direct and indirect effects also needs to be subtracted. The variance of the sum of two variables is $\mathrm{var}(X+Y) = \mathrm{var}(X) + \mathrm{var}(Y) - 2\mathrm{cov}(X, Y)$. While there are two $V_\mathrm{IGE}$ components contributing (one from each parent) we only need to remove $COV_\mathrm{A,IGE}$ because the covariance we defined above is that between a target's direct genetic effect on themselves and the indirect effect on the target's offspring but the contribution of this covariance to the phenotypic variance is between a target's direct genetic effect on the target's phenotype and the parents' (summed) indirect effect on the target's phenotype
 
 ```{r}
-V_E = V_P - V_A - 2*V_IGE - 2*COV_A_IGE
+V_E = V_P - V_A - 2*V_IGE - COV_A_IGE
 V_E
 ```
 
@@ -142,8 +193,8 @@ Simulate the other components of the parental phenotypes. Since we are simulatin
 ```{r}
 maternal_genetic_nurture <- rnorm(n, sd=sqrt(2*V_IGE)) # mother's parents' (combined) indirect effects (on the mother's phenotype)
 paternal_genetic_nurture <- rnorm(n, sd=sqrt(2*V_IGE)) # father's parents' (combined) indirect effects (on the mother's phenotype)
-maternal_environment <- rnorm(n, sd=sqrt(V_E+2*COV_A_IGE))
-paternal_environment <- rnorm(n, sd=sqrt(V_E+2*COV_A_IGE))
+maternal_environment <- rnorm(n, sd=sqrt(V_E+COV_A_IGE))
+paternal_environment <- rnorm(n, sd=sqrt(V_E+COV_A_IGE))
 ```
 
 Add up components to create parental phenotypes
@@ -185,6 +236,4 @@ var(offspring_environment)
 var(offspring_phenotype)
 var(offspring_prs)
 ```
-
-
 
